@@ -1,10 +1,10 @@
 from utils import *
 
 # CLASS : Lexer
-# Brief : This implementation class of the GeneralParser class to implement the lexer functionality of pascal language
+# Brief : This implementation class of the Generallexr class to implement the lexer functionality of pascal language
 # Functions:
 #
-# parse_something: implements a lexer function that exepts a lambda function to make its return type
+# lex_something: implements a lexer function that exepts a lambda function to make its return type
 # it expects the following parameters 
 # data: a tuple containing input and a list of output.
 # check: a list that contains the various possible checks
@@ -12,14 +12,14 @@ from utils import *
 # this function return a unmodified version of data when all checks fails
 # it retuns a modified version of data when the first check passses.
 #
-# parse_something_between: implements a lexer function that expets a lambda function to make its return type
+# lex_something_between: implements a lexer function that expets a lambda function to make its return type
 # it exepects the following parameters
 # data: a tuple containing input and a list of output (tokens)
 # chec
 #
 #
 #
-# lex_*: these functions parses each token using the underlying *_something functions.
+# lex_*: these functions lexs each token using the underlying *_something functions.
 # lex_all: runs all lex_* functions untill the no input is left. If an invalid program is provided this function will crash.
 # run: wrapper around the lex_all function
 class Lexer():
@@ -46,14 +46,14 @@ class Lexer():
                                 self.lex_strings
                               ])
         
-    # parse_something :: ([a],[b]) -> a -> (a -> b) -> ([a],[b])
-    def parse_something(self, data, check, return_function):
+    # lex_something :: ([a],[b]) -> a -> (a -> b) -> ([a],[b])
+    def lex_something(self, data, check, return_function):
         if len(check):
             if check[0] == data[0][:len(check[0])]:
                 data[1].append(return_function(check[0]))
                 return (data[0][len(check[0]):], data[1])
             else:
-                return self.parse_something(data, check[1:], return_function)
+                return self.lex_something(data, check[1:], return_function)
         return data
 
     # combine_same :: ([a],[b]) -> (([a],[b]) -> (c,d)) (c -> d -> bool) -> (([a],[b]) -> c -> d -> ([a],[b])) -> ([a],[b])
@@ -63,50 +63,48 @@ class Lexer():
             return combine_function(data,*items)
         return data
     
-    
-    ## TODO rewrite to functional version ##
-    # parse_something_between :: ([a],[b]) -> [a] -> [a] -> (a -> b) -> ([a],[b])
-    def parse_something_between(self, data, begin, end, return_function):
+    # lex_something_between :: ([a],[b]) -> [a] -> [a] -> (a -> b) -> ([a],[b])
+    def lex_something_between(self, data, begin, end, return_function):
         length = len(data[0])
         if length and data[0][0] in begin:
-            i = 1
-            while data[0][i] not in end:
-                i += 1
+            def _psb(i):
                 if i > length:
                     print("ERROR: lacking closing for: "+str(data[0][0]))
                     return ([],[])
-            i += 1
-            data[1].append(return_function(data[0][0:i]))
-            return (data[0][i:], data[1])
+                elif data[0][i] in end:
+                    data[1].append(return_function(data[0][0:i]))
+                    return (data[0][i+1:], data[1])
+                return _psb(i+1)
+            return _psb(1)
         return data
     
     # lex_types :: (String, [Token]) -> (String, [Token])
     def lex_types(self,         data: Tuple[str, List[Token]]) -> Tuple[str, List[Token]]:
-        return self.parse_something(data,self.types           ,(lambda v: Token("type",     v)))
+        return self.lex_something(data,self.types           ,(lambda v: Token("type",     v)))
     # lex_keywords :: (String, [Token]) -> (String, [Token])
     def lex_keywords(self,      data: Tuple[str, List[Token]]) -> Tuple[str, List[Token]]:
-        return self.parse_something(data,self.keywords        ,(lambda v: Token("keyword",  v)))
+        return self.lex_something(data,self.keywords        ,(lambda v: Token("keyword",  v)))
     # lex_operator :: (String, [Token]) -> (String, [Token])
     def lex_operator(self,      data: Tuple[str, List[Token]]) -> Tuple[str, List[Token]]:
-        return self.parse_something(data,self.operators       ,(lambda v: Token("operator", v)))
+        return self.lex_something(data,self.operators       ,(lambda v: Token("operator", v)))
     # lex_brackets :: (String, [Token]) -> (String, [Token])
     def lex_brackets(self,      data: Tuple[str, List[Token]]) -> Tuple[str, List[Token]]:
-        return self.parse_something(data,self.brackets        ,(lambda v: Token("bracket_open"        ,'') if v == '[' else Token("bracket_closed"        ,'')))
+        return self.lex_something(data,self.brackets        ,(lambda v: Token("bracket_open"        ,'') if v == '[' else Token("bracket_closed"        ,'')))
     # lex_curly_bracket :: (String, [Token]) -> (String, [Token])
     def lex_curly_bracket(self, data: Tuple[str, List[Token]]) -> Tuple[str, List[Token]]:
-        return self.parse_something(data,self.curly_bracket   ,(lambda v: Token("curly_bracket_open"  ,'') if v == '{' else Token("curly_bracket_closed"  ,'')))
+        return self.lex_something(data,self.curly_bracket   ,(lambda v: Token("curly_bracket_open"  ,'') if v == '{' else Token("curly_bracket_closed"  ,'')))
     # lex_parentheses :: (String, [Token]) -> (String, [Token])
     def lex_parentheses(self,   data: Tuple[str, List[Token]]) -> Tuple[str, List[Token]]:
-        return self.parse_something(data,self.parentheses     ,(lambda v: Token("parentheses_open"    ,'') if v == '(' else Token("parentheses_closed"    ,'')))
+        return self.lex_something(data,self.parentheses     ,(lambda v: Token("parentheses_open"    ,'') if v == '(' else Token("parentheses_closed"    ,'')))
     # lex_strings :: (String, [Token]) -> (String, [Token])
     def lex_strings(self,       data: Tuple[str, List[Token]]) -> Tuple[str, List[Token]]:
-        return functools.reduce(lambda d, c: self.parse_something_between(d,[c],[c],(lambda v: Token("string", v))), self.strings, data)
+        return functools.reduce(lambda d, c: self.lex_something_between(d,[c],[c],(lambda v: Token("string", v))), self.strings, data)
     # lex_eof :: (String, [Token]) -> (String, [Token])
     def lex_eof(self,       data: Tuple[str, List[Token]]) -> Tuple[str, List[Token]]:
-        return self.parse_something(data,['.']                ,(lambda v: Token("eof",      v)))
+        return self.lex_something(data,['.']                ,(lambda v: Token("eof",      v)))
     # lex_digit :: (String, [Token]) -> (String, [Token])
     def lex_digit(self,       data: Tuple[str, List[Token]]) -> Tuple[str, List[Token]]:
-        return self.parse_something(data,self.digits          ,(lambda v: Token("digit",    v)))
+        return self.lex_something(data,self.digits          ,(lambda v: Token("digit",    v)))
     # lex_skip_space :: (String, [Token]) -> (String, [Token])
     def lex_skip_space(self,    data: Tuple[str, List[Token]]) -> Tuple[str, List[Token]]:
         return data if len(data[0]) and data[0][0] != ' ' else (data[0][1:],data[1])
