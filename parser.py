@@ -10,12 +10,12 @@ class Parser():
                                                     [check_token_equal_all        ,check_token_equal_name   ,check_token_equal_name ]),
                                  'func_close':  (   [Token('parentheses_closed')  ,Token('keyword',';')],
                                                     [check_token_equal_name       ,check_token_equal_all]),
-                                 'func_ret' :   (   [Token('parentheses_closed')  ,Token('operator',':')  ,Token('type')          ,  Token('keyword',';')],
-                                                    [check_token_equal_name       ,check_token_equal_all  ,check_token_equal_name , check_token_equal_all]),
-                                 'params'   :   (   [Token('keyword',',')   ,Token('identifier')    , Token('operator',':'), Token('type')],
-                                                    [check_token_equal_all  ,check_token_equal_name , check_token_equal_all, check_token_equal_name]),
-                                 'first_param' :(   [Token('identifier')    ,Token('operator',':')  , Token('type')],
-                                                    [check_token_equal_name ,check_token_equal_all  , check_token_equal_name]),
+                                 'func_ret' :   (   [Token('parentheses_closed')  ,Token('operator',':')    ,Token('type')              ,  Token('keyword',';')],
+                                                    [check_token_equal_name       ,check_token_equal_all    ,check_token_equal_name     , check_token_equal_all]),
+                                 'params'   :   (   [Token('keyword',',')         ,Token('identifier')      , Token('operator',':')     , Token('type')],
+                                                    [check_token_equal_all        ,check_token_equal_name   , check_token_equal_all     , check_token_equal_name]),
+                                 'first_param' :(   [Token('identifier')          ,Token('operator',':')    , Token('type')],
+                                                    [check_token_equal_name       ,check_token_equal_all    , check_token_equal_name]),
                                  'begin' :      (   [Token('keyword','begin')],
                                                     [check_token_equal_all]),
                                  'repeat' :     (   [Token('keyword','repeat')],
@@ -23,7 +23,21 @@ class Parser():
                                  'var':         (   [Token('keyword','var')],
                                                     [check_token_equal_all]),
                                  'if' :         (   [Token('keyword','if')],
-                                                    [check_token_equal_all])
+                                                    [check_token_equal_all]),
+                                 'func_call':   (   [Token('identifier')          ,Token('parentheses_open')],
+                                                    [check_token_equal_name       ,check_token_equal_name]),
+                                 'writeLn':     (   [Token('keyword','WriteLn')   ,Token('parentheses_open')],
+                                                    [check_token_equal_all        ,check_token_equal_name]),
+                                 'close':       (   [Token('parentheses_closed')],
+                                                    [check_token_equal_name]),
+                                 'list':        (   [Token('keyword',',')         ,Token('identifier')],
+                                                    [check_token_equal_all        ,check_token_equal_name]),
+                                 'f_list':      (   [Token('identifier')],
+                                                    [check_token_equal_name]),
+                                 'str_list':    (   [Token('keyword',',')         ,Token('string')],
+                                                    [check_token_equal_all        ,check_token_equal_name]),
+                                 'str_f_list':  (   [Token('string')],
+                                                    [check_token_equal_name])
                                  
                                 }
     # r_check :: [Token] -> [Token] -> [([Token] -> [Token] -> Bool)]
@@ -33,7 +47,7 @@ class Parser():
         elif checks[0](tokens[0],expected_tokens[0]):
             return self.r_check(tokens[1:],expected_tokens[1:],checks[1:])
         return False
-    
+
     def __str__(self):
         return 'Parses the output from the lexer'
     __repr__ = __str__    
@@ -98,11 +112,21 @@ class Parser():
             return data
     
     # p_function_call :: ([Token], AST_Node) -> ([Token], AST_Node)
-    def p_function_call(self, data: Tuple[List[Token],AST_Node]) -> Tuple[List[Token],AST_Node]: 
+    def p_function_call(self, data: Tuple[List[Token],AST_Node]) -> Tuple[List[Token],AST_Node]:  
+        if self.r_check(data[0], *(self.orders['writeLn'])):
+            ast_writeLn = AST_WriteLn('writeLn', [])
+            data[1].append(ast_writeLn)
+            return (self.p_fu_function_call(((data[0][len(self.orders['writeLn'][0]):]),ast_writeLn))[0],data[1])
+            
         return data
     
     # p_writeLn :: ([Token], AST_Node) -> ([Token], AST_Node)
     def p_writeLn(self, data: Tuple[List[Token],AST_Node]) -> Tuple[List[Token],AST_Node]: 
+        if self.r_check(data[0], *(self.orders['writeLn'])):
+            ast_writeLn = AST_WriteLn('writeLn', [])
+            data[1].append(ast_writeLn)
+            return (self.p_fu_function_call(((data[0][len(self.orders['writeLn'][0]):]),ast_writeLn))[0],data[1])
+            
         return data
     
     # p_expression :: ([Token], AST_Node) -> ([Token], AST_Node)
@@ -130,6 +154,17 @@ class Parser():
             print("ERROR IN FUNCTION DEFINITION")
             return ([],data[1])
     
+    # p_fu_function_call :: ([Token], AST_Node) -> ([Token], AST_Node)
+    def p_fu_function_call(self, data: Tuple[List[Token],AST_Node]) -> Tuple[List[Token],AST_Node]:
+        new_data = self.parse_until_no_change(data, [self.p_function_call_param,self.p_function_call_first_param])
+        if self.r_check(new_data[0], *(self.orders['close'])):
+            new_data = self.p_function_def_closing(new_data)
+            return self.p_begin(new_data) #function body
+        else:
+            print(new_data)
+            print("ERROR IN PARENTHESES CLOSING")
+            return ([],data[1])
+    
     # p_fu_begin :: ([Token], AST_Node) -> ([Token], AST_Node)
     def p_fu_begin(self, data: Tuple[List[Token],AST_Node]) -> Tuple[List[Token],AST_Node]:
         return self.parse_until_no_change(data, [self.p_if,self.p_var,self.p_writeLn,self.p_expression])
@@ -137,13 +172,14 @@ class Parser():
     # p_fu_if :: ([Token], AST_Node) -> ([Token], AST_Node)
     def p_fu_if(self, data: Tuple[List[Token],AST_Node]) -> Tuple[List[Token],AST_Node]:
         return data    
+        
             
     ## CLOSING PARSERS ##
     
     # p_function_first_param :: ([Token],AST_Node) -> ([Token], AST_Node)
     def p_function_first_param(self, data: Tuple[List[Token],AST_Node]) -> Tuple[List[Token],AST_Node]:
         if self.r_check(data[0], *(self.orders['first_param'])):
-            ast_param = AST_FunctionParameters('param',[])
+            ast_param = AST_FunctionParameter('param',[], data[0][0].data, data[0][2].data)
             data[1].append(ast_param)
             return ((data[0][len(self.orders['first_param'][0]):]),data[1])
         return data
@@ -151,9 +187,25 @@ class Parser():
     # p_function_param :: ([Token],AST_Node) -> ([Token], AST_Node)
     def p_function_param(self, data: Tuple[List[Token],AST_Node]) -> Tuple[List[Token],AST_Node]:
         if self.r_check(data[0], *(self.orders['params'])):
-            ast_param = AST_FunctionParameters('param',[])
+            ast_param = AST_FunctionParameter('param',[], data[0][1].data, data[0][3].data)
             data[1].append(ast_param)
             return ((data[0][len(self.orders['params'][0]):]),data[1])
+        return data
+    
+    # p_function_call_param :: ([Token],AST_Node) -> ([Token], AST_Node)
+    def p_function_call_param(self, data: Tuple[List[Token],AST_Node]) -> Tuple[List[Token],AST_Node]:
+        if self.r_check(data[0], *(self.orders['list'])) or self.r_check(data[0], *(self.orders['str_list'])):
+            ast_param = AST_Parameter('list',[], data[0][1].data)
+            data[1].append(ast_param)
+            return ((data[0][len(self.orders['list'][0]):]),data[1])
+        return data
+    
+    # p_function_first_param :: ([Token],AST_Node) -> ([Token], AST_Node)
+    def p_function_call_first_param(self, data: Tuple[List[Token],AST_Node]) -> Tuple[List[Token],AST_Node]:
+        if self.r_check(data[0], *(self.orders['f_list']))or self.r_check(data[0], *(self.orders['str_f_list'])):
+            ast_param = AST_Parameter('f_list',[], data[0][0].data)
+            data[1].append(ast_param)
+            return ((data[0][len(self.orders['f_list'][0]):]),data[1])
         return data
     
     # p_function_def_closing :: ([Token],AST_Node) -> ([Token], AST_Node)
@@ -185,7 +237,7 @@ class Parser():
         parsers.reverse()
         parserall = compose(parsers)
         return parserall(data)
-    
+
     # parse_in_order :: ([Token], AST_Node) -> [(([Token],AST_Node) -> ([Token],AST_Node]))] -> ([Token], AST_Node)
     def parse_in_order_stop_at_succes(self, data: Tuple[List[Token],AST_Node], parsers: List[Callable[[Tuple[List[Token],AST_Node]],Tuple[List[Token],AST_Node]]]) -> Tuple[List[Token],AST_Node]:
         if not len(parsers):
@@ -195,7 +247,7 @@ class Parser():
             return new_data
         return self.parse_in_order_stop_at_succes(data,parsers[1:])
 
-        
+
     ## WRAPPERS ##
     
     # run :: [Token] -> AST_Node

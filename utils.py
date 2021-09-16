@@ -94,17 +94,17 @@ class AST_Function(AST_Node):
 class AST_Begin(AST_Node):
     def __init__(self, ast_type, connections):
         super().__init__(ast_type,connections)
-
-class AST_FunctionParameters(AST_Node):
-    def __init__(self, ast_type, connections):
-        super().__init__(ast_type,connections)
-
       
 class AST_FunctionParameter(AST_Node):
     def __init__(self, ast_type, connections, parameter_name, parameter_type):
         super().__init__(ast_type,connections)
         self.parameter_name = parameter_name
         self.parameter_type = parameter_type
+
+class AST_Parameter(AST_Node):
+    def __init__(self, ast_type, connections, value):
+        super().__init__(ast_type,connections)
+        self.value = value
 
 class AST_FunctionReturnType(AST_Node):
     def __init__(self, ast_type, connections, return_type):
@@ -126,26 +126,26 @@ class AST_Repeat(AST_Node):
         super().__init__(ast_type,connections)
         
 class AST_RepeatBlock(AST_Node):
-    def __init__(self, ast_type, connections, var_name, var_type):
+    def __init__(self, ast_type, connections):
         super().__init__(ast_type,connections)
-        self.procedure_name = var_name
-        self.return_type = var_type
         
 class AST_If(AST_Node):
     def __init__(self, ast_type, connections):
         super().__init__(ast_type,connections)
         
 class AST_IfTrue(AST_Node):
-    def __init__(self, ast_type, connections, var_name, var_type):
+    def __init__(self, ast_type, connections):
         super().__init__(ast_type,connections)
-        self.procedure_name = var_name
-        self.return_type = var_type
+
     
 class AST_IfFalse(AST_Node):
-    def __init__(self, ast_type, connections, var_name, var_type):
+    def __init__(self, ast_type, connections):
         super().__init__(ast_type,connections)
-        self.procedure_name = var_name
-        self.return_type = var_type
+        
+class AST_WriteLn(AST_Node):
+    def __init__(self, ast_type, connections):
+        super().__init__(ast_type,connections)
+
         
 # pre_prossesing :: String -> String
 def pre_prossesing(program: str) -> str:
