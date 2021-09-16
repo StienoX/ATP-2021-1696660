@@ -200,7 +200,7 @@ class Parser():
     # p_function_call_param :: ([Token],AST_Node) -> ([Token], AST_Node)
     def p_function_call_param(self, data: Tuple[List[Token],AST_Node]) -> Tuple[List[Token],AST_Node]:
         if self.r_check(data[0], *(self.orders['list'])) or self.r_check(data[0], *(self.orders['str_list'])):
-            ast_param = AST_Parameter('list',[], data[0][1].data)
+            ast_param = AST_Parameter('list',[], data[0][1].data, data[0][1].name)
             data[1].append(ast_param)
             return ((data[0][len(self.orders['list'][0]):]),data[1])
         return data
@@ -208,7 +208,7 @@ class Parser():
     # p_function_first_param :: ([Token],AST_Node) -> ([Token], AST_Node)
     def p_function_call_first_param(self, data: Tuple[List[Token],AST_Node]) -> Tuple[List[Token],AST_Node]:
         if self.r_check(data[0], *(self.orders['f_list']))or self.r_check(data[0], *(self.orders['str_f_list'])):
-            ast_param = AST_Parameter('f_list',[], data[0][0].data)
+            ast_param = AST_Parameter('list',[], data[0][0].data, data[0][0].name)
             data[1].append(ast_param)
             return ((data[0][len(self.orders['f_list'][0]):]),data[1])
         return data

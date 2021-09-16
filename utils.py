@@ -102,9 +102,10 @@ class AST_FunctionParameter(AST_Node):
         self.parameter_type = parameter_type
 
 class AST_Parameter(AST_Node):
-    def __init__(self, ast_type, connections, value):
+    def __init__(self, ast_type, connections, value, _type):
         super().__init__(ast_type,connections)
         self.value = value
+        self._type = _type
 
 class AST_FunctionReturnType(AST_Node):
     def __init__(self, ast_type, connections, return_type):
@@ -152,3 +153,8 @@ def pre_prossesing(program: str) -> str:
     program = program.replace('\n', '')
     program = program.replace('\t', '    ')
     return program
+
+class OperatorPrecedance:
+    def __init__(self):
+        self.op = [('<=',1),('>=',1),('=',1), (':=',0), ('::=',0), (':',1), ('<',1), ('>',1), ('+',2), ('-',2), ('*',3), ('/',3), ('(',4), (')',4)]
+        
