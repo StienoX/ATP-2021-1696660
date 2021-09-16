@@ -30,6 +30,10 @@ class Parser():
                                                     [check_token_equal_all        ,check_token_equal_name]),
                                  'close':       (   [Token('parentheses_closed')],
                                                     [check_token_equal_name]),
+                                 'semi':        (   [Token('keyword',';')],
+                                                    [check_token_equal_all]),
+                                 'end':         (   [Token('keyword','end')],
+                                                    [check_token_equal_all]),
                                  'list':        (   [Token('keyword',',')         ,Token('identifier')],
                                                     [check_token_equal_all        ,check_token_equal_name]),
                                  'f_list':      (   [Token('identifier')],
@@ -56,9 +60,11 @@ class Parser():
     ## INIT PARSER ##
     
     # p_program :: [Token] -> AST_Node
-    def p_program(self, tokens: List[Token]) -> AST_Node:
+    def p_program(self, tokens: List[Token]) -> Tuple[List[Token],AST_Node]:
         if self.r_check(tokens, *(self.orders['program'])):   
-            return self.p_function(((tokens[len(self.orders['program'][0]):]),AST_Program('program',[],tokens[1].name)))[1]
+            #return self.p_function(((tokens[len(self.orders['program'][0]):]),AST_Program('program',[],tokens[1].name)))[1]
+            return self.parse_until_no_change(((tokens[len(self.orders['program'][0]):]),AST_Program('program',[],tokens[1].name)), 
+                                              [self.p_function,self.p_if,self.p_var,self.p_writeLn,self.p_expression])
         else:
             print("No program identifier")
         return None
@@ -89,7 +95,7 @@ class Parser():
         if self.r_check(data[0], *(self.orders['begin'])):
             ast_begin = AST_Begin('begin',[])
             data[1].append(ast_begin)
-            return (self.p_fu_begin(((data[0][len(self.orders['begin'][0]):]),ast_begin))[0],data[1])
+            return self.parse_in_order((self.p_fu_begin(((data[0][len(self.orders['begin'][0]):]),ast_begin))[0],data[1]), [self.p_end, self.p_semicolomn])
         else:
             return data
     
@@ -145,20 +151,19 @@ class Parser():
         new_data = self.parse_until_no_change(data, [self.p_function_param,self.p_function_first_param])
         if self.r_check(new_data[0], *(self.orders['func_close'])):
             new_data = self.p_function_def_closing(new_data)
-            return self.p_begin(new_data) #function body
         elif self.r_check(new_data[0], *(self.orders['func_ret'])):
             new_data = self.p_function_def_closing_ret(new_data)
-            return self.p_begin(new_data) #function body with return type
         else:
             print(new_data)
             print("ERROR IN FUNCTION DEFINITION")
             return ([],data[1])
+        return self.p_begin(new_data) #function body
     
     # p_fu_function_call :: ([Token], AST_Node) -> ([Token], AST_Node)
     def p_fu_function_call(self, data: Tuple[List[Token],AST_Node]) -> Tuple[List[Token],AST_Node]:
         new_data = self.parse_until_no_change(data, [self.p_function_call_param,self.p_function_call_first_param])
         if self.r_check(new_data[0], *(self.orders['close'])):
-            new_data = self.p_function_def_closing(new_data)
+            new_data = self.p_closing(new_data)
             return self.p_begin(new_data) #function body
         else:
             print(new_data)
@@ -214,6 +219,24 @@ class Parser():
             return ((data[0][len(self.orders['func_close'][0]):]),data[1])
         return data
     
+    # p_closing :: ([Token],AST_Node) -> ([Token], AST_Node)
+    def p_closing(self, data: Tuple[List[Token],AST_Node]) -> Tuple[List[Token],AST_Node]:
+        if self.r_check(data[0], *(self.orders['close'])):
+            return ((data[0][len(self.orders['close'][0]):]),data[1])
+        return data
+    
+    # p_semicolomn :: ([Token],AST_Node) -> ([Token], AST_Node)
+    def p_semicolomn(self, data: Tuple[List[Token],AST_Node]) -> Tuple[List[Token],AST_Node]:
+        if self.r_check(data[0], *(self.orders['semi'])):
+            return ((data[0][len(self.orders['semi'][0]):]),data[1])
+        return data
+    
+    # p_end :: ([Token],AST_Node) -> ([Token], AST_Node)
+    def p_end(self, data: Tuple[List[Token],AST_Node]) -> Tuple[List[Token],AST_Node]:
+        if self.r_check(data[0], *(self.orders['end'])):
+            return ((data[0][len(self.orders['end'][0]):]),data[1])
+        return data
+    
     # p_function_def_closing_ret :: ([Token],AST_Node) -> ([Token], AST_Node)
     def p_function_def_closing_ret(self, data: Tuple[List[Token],AST_Node]) -> Tuple[List[Token],AST_Node]:
         if self.r_check(data[0], *(self.orders['func_ret'])):
@@ -260,3 +283,10 @@ class Parser():
     def parse_nothing(self, data: Tuple[List[Token],AST_Node]) -> Tuple[List[Token],AST_Node]:
         # temporary parser that parses nothing so to debug existing parsers :)
         return data
+    
+    def parse_discard_until(self, data: Tuple[List[Token],AST_Node], token: Token) -> Tuple[List[Token],AST_Node]:
+        # parser that discards all tokens untill it finds it Token. It will not discard the Token it tries to find
+        if not len(data[0]) or data[0][0] == token:
+            return data
+        else:
+            return self.parse_discard_until((data[0][1:],data[1]),token)
