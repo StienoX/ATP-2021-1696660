@@ -1,5 +1,4 @@
 from utils import *
-from lexer import *
 
 class Parser():
     def __init__(self):

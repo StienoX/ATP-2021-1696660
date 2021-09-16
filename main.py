@@ -1,5 +1,5 @@
-from parser import *
-from lexer import *
+from parser import Parser
+from lexer import Lexer
 from utils import *
 
 
