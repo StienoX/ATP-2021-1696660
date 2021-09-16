@@ -23,15 +23,7 @@ class Parser():
                                  'var':         (   [Token('keyword','var')],
                                                     [check_token_equal_all]),
                                  'if' :         (   [Token('keyword','if')],
-                                                    [Token('keyword','then')]),
-                                 '()' :         (   [Token('parentheses_open')],
-                                                    [Token('parentheses_closed')]),
-                                 'if_true' :    (   [Token('keyword','then')],
-                                                    [Token('keyword','else'), Token('keyword','end')]),
-                                 'if_false' :   (   [Token('keyword','else')],
-                                                    [Token('keyword',';')]),
-                                 'until' :      (   [Token('keyword', 'until')],
-                                                    [Token('keyword', ';')])
+                                                    [check_token_equal_all])
                                  
                                 }
     # r_check :: [Token] -> [Token] -> [([Token] -> [Token] -> Bool)]
@@ -83,7 +75,7 @@ class Parser():
         if self.r_check(data[0], *(self.orders['begin'])):
             ast_begin = AST_Begin('begin',[])
             data[1].append(ast_begin)
-            return (self.parse_nothing(((data[0][len(self.orders['begin'][0]):]),ast_begin))[0],data[1])
+            return (self.p_fu_begin(((data[0][len(self.orders['begin'][0]):]),ast_begin))[0],data[1])
         else:
             return data
     
@@ -101,7 +93,7 @@ class Parser():
         if self.r_check(data[0], *(self.orders['if'])):
             ast_if = AST_If('if',[])
             data[1].append(ast_if)
-            return (self.parse_nothing(((data[0][len(self.orders['if'][0]):]),ast_if))[0],data[1])
+            return (self.p_fu_if(((data[0][len(self.orders['if'][0]):]),ast_if))[0],data[1])
         else:
             return data
     
@@ -137,10 +129,14 @@ class Parser():
             print(new_data)
             print("ERROR IN FUNCTION DEFINITION")
             return ([],data[1])
-        
+    
+    # p_fu_begin :: ([Token], AST_Node) -> ([Token], AST_Node)
     def p_fu_begin(self, data: Tuple[List[Token],AST_Node]) -> Tuple[List[Token],AST_Node]:
         return self.parse_until_no_change(data, [self.p_if,self.p_var,self.p_writeLn,self.p_expression])
-        
+    
+    # p_fu_if :: ([Token], AST_Node) -> ([Token], AST_Node)
+    def p_fu_if(self, data: Tuple[List[Token],AST_Node]) -> Tuple[List[Token],AST_Node]:
+        return data    
             
     ## CLOSING PARSERS ##
     
@@ -180,7 +176,7 @@ class Parser():
     # parse_until_no_change :: ([Token], AST_Node) -> [(([Token],AST_Node) -> ([Token],AST_Node]))] -> ([Token], AST_Node)
     def parse_until_no_change(self, data: Tuple[List[Token],AST_Node], parsers: List[Callable[[Tuple[List[Token],AST_Node]],Tuple[List[Token],AST_Node]]]) -> Tuple[List[Token],AST_Node]:
         new_data = self.parse_in_order_stop_at_succes(data, parsers)
-        if not new_data[0] or len(data[0]) != len(new_data[0]):
+        if not new_data[0] or len(data[0]) == len(new_data[0]):
             return new_data
         return self.parse_until_no_change(new_data, parsers)
     

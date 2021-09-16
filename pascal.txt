@@ -1,6 +1,14 @@
 program Printing;
 
 
+function fib(x:integer):integer;
+begin
+  if ((x = 0) or (x = 1)) then
+    fib:=1
+  else
+    fib:=fib(x - 2) + fib(x - 1);
+end;
+
 function Print(j : integer);
 begin
     WriteLn('j:',j)
@@ -11,15 +19,6 @@ var i : integer;
 repeat
     a := a + 1
 until a = 10;
-
-
-function fib(x:integer):integer;
-begin
-  if ((x = 0) or (x = 1)) then
-    fib:=1
-  else
-    fib:=fib(x - 2) + fib(x - 1);
-end;
 
 begin { main program }
     i := 21;
