@@ -63,6 +63,8 @@ class Lexer():
             return combine_function(data,*items)
         return data
     
+    
+    ## TODO rewrite to functional version ##
     # parse_something_between :: ([a],[b]) -> [a] -> [a] -> (a -> b) -> ([a],[b])
     def parse_something_between(self, data, begin, end, return_function):
         length = len(data[0])
