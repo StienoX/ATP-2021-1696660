@@ -30,6 +30,8 @@ class Parser():
                                                     [check_token_equal_all        ,check_token_equal_name]),
                                  'close':       (   [Token('parentheses_closed')],
                                                     [check_token_equal_name]),
+                                 'open':        (   [Token('parentheses_open')],
+                                                    [check_token_equal_name]),
                                  'semi':        (   [Token('keyword',';')],
                                                     [check_token_equal_all]),
                                  'end':         (   [Token('keyword','end')],
@@ -41,13 +43,32 @@ class Parser():
                                  'str_list':    (   [Token('keyword',',')         ,Token('string')],
                                                     [check_token_equal_all        ,check_token_equal_name]),
                                  'str_f_list':  (   [Token('string')],
-                                                    [check_token_equal_name])
-                                 
+                                                    [check_token_equal_name]),
+                                 'exp':         (   [Token('identifier')          ,Token('operator')],
+                                                    [check_token_equal_name       ,check_token_equal_name]),
+                                 'exp_2':       (   [Token('digit')               ,Token('operator')],
+                                                    [check_token_equal_name       ,check_token_equal_name]),
+                                 'exp_3':       (   [Token('string')              ,Token('operator')],
+                                                    [check_token_equal_name       ,check_token_equal_name]),
+                                 'exp_4':       (   [Token('identifier')          ,Token('parentheses_open')],
+                                                    [check_token_equal_name       ,check_token_equal_name]),
+                                 'exp_c':       (   [Token('identifier')          ,Token('parenteses_closed')],
+                                                    [check_token_equal_name       ,check_token_equal_name]),
+                                 'exp_2c':      (   [Token('digit')               ,Token('parenteses_closed')],
+                                                    [check_token_equal_name       ,check_token_equal_name]),
+                                 'exp_3c':      (   [Token('string')              ,Token('parenteses_closed')],
+                                                    [check_token_equal_name       ,check_token_equal_name]),
+                                 'exp_s':       (   [Token('identifier')          ,Token('keyword',';')],
+                                                    [check_token_equal_name       ,check_token_equal_all]),
+                                 'exp_2s':      (   [Token('digit')               ,Token('keyword',';')],
+                                                    [check_token_equal_name       ,check_token_equal_all]),
+                                 'exp_3s':      (   [Token('string')              ,Token('keyword',';')],
+                                                    [check_token_equal_name       ,check_token_equal_all]),
                                 }
-        self.precedance_order = [(Token('operator','<='),1),(Token('operator','>='),1),(Token('operator'),'=',1), (Token('operator',':='),0), (Token('operator','::='),0), (Token('operator',':'),1), (Token('operator','<'),1), (Token('operator','>'),1), (Token('operator','+'),2), (Token('operator','-'),2), (Token('operator','*'),3), (Token('operator','/'),3)]
+        self.precedense_order = [(Token('operator','<='),1),(Token('operator','>='),1),(Token('operator'),'=',1), (Token('operator',':='),0), (Token('operator','::='),0), (Token('operator',':'),1), (Token('operator','<'),1), (Token('operator','>'),1), (Token('operator','+'),2), (Token('operator','-'),2), (Token('operator','*'),3), (Token('operator','/'),3)]
     
     # r_check :: [Token] -> [Token] -> [([Token] -> [Token] -> Bool)]
-    def r_check(self, tokens: List[Token], expected_tokens: List[Token], checks: List[Callable[[[Token],[Token]], bool]]):
+    def r_check(self, tokens: List[Token], expected_tokens: List[Token], checks: List[Callable[[[Token],[Token]], bool]]) -> bool:
         if not len(checks):
             return True
         elif checks[0](tokens[0],expected_tokens[0]):
@@ -56,8 +77,16 @@ class Parser():
 
     def __str__(self):
         return 'Parses the output from the lexer'
-    __repr__ = __str__    
+    __repr__ = __str__
     
+    def get_precedense(self, token: Token) -> int:
+        def _get_precedense(po):
+            if len(po):
+                return self._get_precedense(po[1:])
+            elif token == po[0][0]:
+                return po[0][1]
+            return 9
+        return _get_precedense(self.precedense_order)
     
     ## INIT PARSER ##
     
@@ -138,8 +167,25 @@ class Parser():
     
     # p_expression :: ([Token], AST_Node) -> ([Token], AST_Node)
     def p_expression(self, data: Tuple[List[Token],AST_Node]) -> Tuple[List[Token],AST_Node]: 
+        ast_expression = None
+        def _p_expression(data: Tuple[List[Token],AST_Node], type_expr: str) -> Tuple[List[Token],AST_Node]:
+            ast_expression = AST_Expression('expression',[])
+            ast_expression.append(ExprNode(data[0][1].data,self.get_precedense(data[0][1])))
+            ast_expression.expression.left(ExprLeaf(type_expr,data[0][0].data))
+            return ast_expression
+        if self.r_check(data[0], *(self.orders['exp'])):
+            ast_expression = _p_expression(data, 'var') # var
+        if self.r_check(data[0], *(self.orders['exp_2'])) or self.r_check(data[0], *(self.orders['exp_3'])):  
+            ast_expression = _p_expression(data, data[0][0].name) # types)
+        if self.r_check(data[0], *(self.orders['exp_4'])):
+            ast_expression = _p_expression(data, 'function') # function
+        if ast_expression:
+            data[1].append(ast_expression)
+            return self.p_fu_expression(data[len(self.orders['exp'][0]):], ast_expression, ast_expression)
+        
         return data
-
+    
+    
     ## FOLLOW-UP PARSERS ##
     
     # p_fu_function :: ([Token], AST_Node) -> ([Token], AST_Node)
@@ -159,8 +205,7 @@ class Parser():
     def p_fu_function_call(self, data: Tuple[List[Token],AST_Node]) -> Tuple[List[Token],AST_Node]:
         new_data = self.parse_until_no_change(data, [self.p_function_call_param,self.p_function_call_first_param])
         if self.r_check(new_data[0], *(self.orders['close'])):
-            new_data = self.p_closing(new_data)
-            return self.p_begin(new_data) #function body
+            return self.p_closing(new_data)
         else:
             print(new_data)
             print("ERROR IN PARENTHESES CLOSING")
@@ -173,8 +218,57 @@ class Parser():
     # p_fu_if :: ([Token], AST_Node) -> ([Token], AST_Node)
     def p_fu_if(self, data: Tuple[List[Token],AST_Node]) -> Tuple[List[Token],AST_Node]:
         return self.parse_discard_until(data, Token('keyword','then'))   
+    
+    # p_fu_expression :: ([Token], AST_Node) -> ([Token], AST_Node)
+    def p_fu_expression(self, data: Tuple[List[Token],AST_Node], head_node: ExprNode, last_node: ExprNode) -> Tuple[List[Token],AST_Node]: 
+        def _p_fu_expression(expression_node, leaf_node):
+            def _insert(current_node, prev_node):
+                if not current_node:
+                    last_node.right(expression_node)
+                    expression_node.left(leaf_node)
+                    return (head_node,expression_node)
+                if current_node < expression_node:
+                    return _insert(current_node.right(), current_node)
+                else:
+                    last_node.right(leaf_node)
+                    expression_node.left(current_node)
+                    if head_node == prev_node:
+                        data[1].expression = expression_node
+                        return (expression_node,expression_node)
+                    else:
+                        prev_node.right(expression_node)
+                        return (head_node,expression_node)
+            (new_head_node, new_last_node) = _insert(head_node, head_node)
+            return (data, new_head_node, new_last_node)
         
-            
+        if   self.r_check(data[0], *(self.orders['open'])):   # ( )
+            return 
+        elif self.r_check(data[0], *(self.orders['exp'])):    # variable
+            return
+        elif self.r_check(data[0], *(self.orders['exp_2'])):  # digit
+            return
+        elif self.r_check(data[0], *(self.orders['exp_3'])):  # string
+            return
+        elif self.r_check(data[0], *(self.orders['exp_4'])):  # functioncall
+            return
+        elif self.r_check(data[0], *(self.orders['exp_c'])):  # var )
+            return
+        elif self.r_check(data[0], *(self.orders['exp_2c'])): # digit )
+            return
+        elif self.r_check(data[0], *(self.orders['exp_3c'])): # string )
+            return
+        elif self.r_check(data[0], *(self.orders['exp_s'])):  # var ;
+            return
+        elif self.r_check(data[0], *(self.orders['exp_2s'])): # functioncall
+            return
+        elif self.r_check(data[0], *(self.orders['exp_3s'])): # functioncall
+            return
+        elif self.r_check(data[0], *(self.orders['close'])):  # (function) )
+            return 
+        elif self.r_check(data[0], *(self.orders['semi'])):   # (function) ;
+            return
+          
+          
     ## CLOSING PARSERS ##
     
     # p_function_first_param :: ([Token],AST_Node) -> ([Token], AST_Node)

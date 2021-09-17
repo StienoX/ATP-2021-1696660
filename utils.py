@@ -13,12 +13,13 @@ class Token:
     def __init__(self, name, data = ''):
         self.name = name
         self.data = data
-        
+        if data == '':
+            self.data = self.name
     def __str__(self):
         return '(' + self.name + ',' + self.data + ') '
         
     def __eq__(self, other):
-        return check_token_equal_all(self,other) or ((check_token_equal_name(self,other) and (self.data == '' or other.data == '')))
+        return check_token_equal_all(self,other) or ((check_token_equal_name(self,other) and (self.data == self.name or other.data == other.name)))
     
     __repr__ = __str__
     
@@ -129,6 +130,16 @@ class AST_Repeat(AST_Node):
 class AST_RepeatBlock(AST_Node):
     def __init__(self, ast_type, connections):
         super().__init__(ast_type,connections)
+
+class AST_Expression(AST_Node):
+    def __init__(self, ast_type, connections):
+        super().__init__(ast_type,connections)
+        self.expression = None
+        
+class AST_ExpressionAssignment(AST_Node):
+    def __init__(self, ast_type, connections, var_name):
+        super().__init__(ast_type,connections)
+        self.var = var_name
         
 class AST_If(AST_Node):
     def __init__(self, ast_type, connections):
@@ -153,3 +164,53 @@ def pre_prossesing(program: str) -> str:
     program = program.replace('\n', '')
     program = program.replace('\t', '    ')
     return program
+
+class ExprNode(AST_Node):
+    def __init__(self, data, precedense):
+        super().__init__("expression_node",[])
+        self.data = data
+        self.precedense = precedense
+        self.left = None
+        self.right = None
+    
+    def left(self, left = None):
+        if left:
+            self.left = left
+            self.connections = []
+            self.connections.append(self.left)
+            if self.right:
+                self.connections.append(self.right)
+        return self.left
+    
+    def right(self, right = None):
+        if right:
+            self.right = right
+            self.connections = []
+            self.connections.append(self.left)
+            self.connections.append(self.right)
+        return self.right
+    
+    def __str__(self):
+        return '(' + self.data + ') '
+        
+    def __eq__(self, other):
+        return self.precedense == other.precedense
+    
+    def __lt__(self, other):
+        return self.precedense < other.precedense
+    
+    def __gt__(self, other):
+        return self.precedense > other.precedense
+    
+    __repr__ = __str__
+    
+class ExprLeaf(AST_Node):
+    def __init__(self, type, data):
+        super().__init__("expression_leaf",[])
+        self.type = type #type or function or var
+        self.data = data
+        
+    def __str__(self):
+        return '(' + self.type + ',' + self.data + ') '
+    
+    __repr__ = __str__
