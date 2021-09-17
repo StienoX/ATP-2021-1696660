@@ -62,7 +62,6 @@ class Parser():
     # p_program :: [Token] -> AST_Node
     def p_program(self, tokens: List[Token]) -> Tuple[List[Token],AST_Node]:
         if self.r_check(tokens, *(self.orders['program'])):   
-            #return self.p_function(((tokens[len(self.orders['program'][0]):]),AST_Program('program',[],tokens[1].name)))[1]
             return self.parse_until_no_change(((tokens[len(self.orders['program'][0]):]),AST_Program('program',[],tokens[1].name)), 
                                               [self.p_function,self.p_if,self.p_var,self.p_writeLn,self.p_expression])
         else:
@@ -138,11 +137,6 @@ class Parser():
     # p_expression :: ([Token], AST_Node) -> ([Token], AST_Node)
     def p_expression(self, data: Tuple[List[Token],AST_Node]) -> Tuple[List[Token],AST_Node]: 
         return data
-    
-    # p_undefined :: ([Token], AST_Node) -> ([Token], AST_Node)
-    def p_undefined(self, data: Tuple[List[Token],AST_Node]) -> Tuple[List[Token],AST_Node]:
-        return data
-
 
     ## FOLLOW-UP PARSERS ##
     
@@ -176,7 +170,7 @@ class Parser():
     
     # p_fu_if :: ([Token], AST_Node) -> ([Token], AST_Node)
     def p_fu_if(self, data: Tuple[List[Token],AST_Node]) -> Tuple[List[Token],AST_Node]:
-        return data    
+        return self.parse_discard_until(data, Token('keyword','then'))   
         
             
     ## CLOSING PARSERS ##

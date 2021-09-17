@@ -18,7 +18,7 @@ class Token:
         return '(' + self.name + ',' + self.data + ') '
         
     def __eq__(self, other):
-        return check_token_equal_all(self,other) or (check_token_equal_name and (self.data == '' or other.data == ''))
+        return check_token_equal_all(self,other) or ((check_token_equal_name(self,other) and (self.data == '' or other.data == '')))
     
     __repr__ = __str__
     
@@ -154,6 +154,7 @@ def pre_prossesing(program: str) -> str:
     program = program.replace('\t', '    ')
     return program
 
+#Should probably be included in the parser and using the corrosponding token instead of string
 class OperatorPrecedance:
     def __init__(self):
         self.op = [('<=',1),('>=',1),('=',1), (':=',0), ('::=',0), (':',1), ('<',1), ('>',1), ('+',2), ('-',2), ('*',3), ('/',3), ('(',4), (')',4)]
