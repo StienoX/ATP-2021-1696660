@@ -147,15 +147,9 @@ class AST_WriteLn(AST_Node):
     def __init__(self, ast_type, connections):
         super().__init__(ast_type,connections)
 
-        
+
 # pre_prossesing :: String -> String
 def pre_prossesing(program: str) -> str:
     program = program.replace('\n', '')
     program = program.replace('\t', '    ')
     return program
-
-#Should probably be included in the parser and using the corrosponding token instead of string
-class OperatorPrecedance:
-    def __init__(self):
-        self.op = [('<=',1),('>=',1),('=',1), (':=',0), ('::=',0), (':',1), ('<',1), ('>',1), ('+',2), ('-',2), ('*',3), ('/',3), ('(',4), (')',4)]
-        

@@ -44,6 +44,8 @@ class Parser():
                                                     [check_token_equal_name])
                                  
                                 }
+        self.precedance_order = [(Token('operator','<='),1),(Token('operator','>='),1),(Token('operator'),'=',1), (Token('operator',':='),0), (Token('operator','::='),0), (Token('operator',':'),1), (Token('operator','<'),1), (Token('operator','>'),1), (Token('operator','+'),2), (Token('operator','-'),2), (Token('operator','*'),3), (Token('operator','/'),3)]
+    
     # r_check :: [Token] -> [Token] -> [([Token] -> [Token] -> Bool)]
     def r_check(self, tokens: List[Token], expected_tokens: List[Token], checks: List[Callable[[[Token],[Token]], bool]]):
         if not len(checks):

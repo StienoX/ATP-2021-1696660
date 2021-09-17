@@ -1,7 +1,7 @@
 from utils import *
 
 # CLASS : Lexer
-# Brief : This implementation class of the Generallexr class to implement the lexer functionality of pascal language
+# Brief : This class implements the lexer functionality of pascal language
 # Functions:
 #
 # lex_something: implements a lexer function that exepts a lambda function to make its return type
@@ -19,7 +19,7 @@ from utils import *
 #
 #
 #
-# lex_*: these functions lexs each token using the underlying *_something functions.
+# lex_*: these functions lexs each token using the underlying *_something functions. The type of this function is (String, [Token]) -> (String, [Token])
 # lex_all: runs all lex_* functions untill the no input is left. If an invalid program is provided this function will crash.
 # run: wrapper around the lex_all function
 class Lexer():
