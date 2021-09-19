@@ -217,7 +217,7 @@ class Parser():
     
     # p_fu_if :: ([Token], AST_Node) -> ([Token], AST_Node)
     def p_fu_if(self, data: Tuple[List[Token],AST_Node]) -> Tuple[List[Token],AST_Node]:
-        return self.parse_discard_until(data, Token('keyword','then'))   
+        return self.p_expression(data)
     
     # p_fu_expression :: ([Token], AST_Node) -> ([Token], AST_Node)
     def p_fu_expression(self, data: Tuple[List[Token],AST_Node], head_node: ExprNode, last_node: ExprNode) -> Tuple[List[Token],AST_Node]: 
@@ -245,48 +245,40 @@ class Parser():
             return 
         
         elif self.r_check(data[0], *(self.orders['exp'])):    # variable
-            (data, new_head_node, new_last_node) = _p_fu_expression(data,ExprNode(data[0][1].data,self.get_precedense(data[0][1])),ExprLeaf('var',data[0][0].name))
+            (data, new_head_node, new_last_node) = _p_fu_expression(data,ExprNode(data[0][1].data,self.get_precedense(data[0][1])),ExprLeaf('var',data[0][0].data))
             return (self.p_fu_expression((data[0][len(self.orders['exp_3'][0]):],data[1]),new_head_node,new_last_node)[0],data[1])
         
         elif self.r_check(data[0], *(self.orders['exp_2'])):  # digit
-            (data, new_head_node, new_last_node) = _p_fu_expression(data,ExprNode(data[0][1].data,self.get_precedense(data[0][1])),ExprLeaf('digit',data[0][0].name))
+            (data, new_head_node, new_last_node) = _p_fu_expression(data,ExprNode(data[0][1].data,self.get_precedense(data[0][1])),ExprLeaf('digit',data[0][0].data))
             return (self.p_fu_expression((data[0][len(self.orders['exp_3'][0]):],data[1]),new_head_node,new_last_node)[0],data[1])
         
         elif self.r_check(data[0], *(self.orders['exp_3'])):  # string
-            (data, new_head_node, new_last_node) = _p_fu_expression(data,ExprNode(data[0][1].data,self.get_precedense(data[0][1])),ExprLeaf('string',data[0][0].name))
+            (data, new_head_node, new_last_node) = _p_fu_expression(data,ExprNode(data[0][1].data,self.get_precedense(data[0][1])),ExprLeaf('string',data[0][0].data))
             return (self.p_fu_expression((data[0][len(self.orders['exp_3'][0]):],data[1]),new_head_node,new_last_node)[0],data[1])
         
         elif self.r_check(data[0], *(self.orders['exp_4'])):  # functioncall
-            
             (data0 ,leaf_node_parent) = self.p_function((data[0][1:],AST_Temp))
-            
-            
-            if self.r_check(data[0], *(self.orders['close'])):    # (functioncall) )
-                return 
-            elif self.r_check(data[0], *(self.orders['semi'])):   # (functioncall) ;
-                return
+            if self.r_check(data0, *(self.orders['close'])) or self.r_check(data[0], *(self.orders['semi'])):    # (functioncall) ) or ;
+                last_node.right(leaf_node_parent.connections[0])
+                return (data0[1:],data[1])
             else:
                 expr_node = ExprNode(data0[1].data,self.get_precedense(data0[1]))
                 (new_data, new_head_node, new_last_node) = _p_fu_expression((data0,data[1]),expr_node,leaf_node_parent.connections[0])
+                del leaf_node_parent
                 return (self.p_fu_expression(new_data[0][1:],new_head_node,new_last_node)[0],data[1])
-            return 
         
-        elif self.r_check(data[0], *(self.orders['exp_c'])):  # var )
-            return
-        elif self.r_check(data[0], *(self.orders['exp_2c'])): # digit )
-            return
-        elif self.r_check(data[0], *(self.orders['exp_3c'])): # string )
-            return
-        elif self.r_check(data[0], *(self.orders['exp_s'])):  # var ;
-            return
-        elif self.r_check(data[0], *(self.orders['exp_2s'])): # digit ;
-            return
-        elif self.r_check(data[0], *(self.orders['exp_3s'])): # string ;
-            return
-        elif self.r_check(data[0], *(self.orders['close'])):  # (functioncall) )
-            return 
-        elif self.r_check(data[0], *(self.orders['semi'])):   # (functioncall) ;
-            return
+        elif self.r_check(data[0], *(self.orders['exp_c'])) or self.r_check(data[0], *(self.orders['exp_s'])):  # var )
+            last_node.right(ExprLeaf('var',data[0][0].data))
+            return (data[0][2:],data[1])
+        elif self.r_check(data[0], *(self.orders['exp_2c'])) or self.r_check(data[0], *(self.orders['exp_2s'])): # digit ) or ;
+            last_node.right(ExprLeaf('digit',data[0][0].data))
+            return (data[0][2:],data[1])
+        elif self.r_check(data[0], *(self.orders['exp_3c'])) or self.r_check(data[0], *(self.orders['exp_3s'])): # string )
+            last_node.right(ExprLeaf('string',data[0][0].data))
+            return (data[0][2:],data[1])
+        else:
+            print(data)
+            return data
           
           
     ## CLOSING PARSERS ##
