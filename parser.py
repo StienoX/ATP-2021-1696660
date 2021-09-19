@@ -221,7 +221,7 @@ class Parser():
     
     # p_fu_expression :: ([Token], AST_Node) -> ([Token], AST_Node)
     def p_fu_expression(self, data: Tuple[List[Token],AST_Node], head_node: ExprNode, last_node: ExprNode) -> Tuple[List[Token],AST_Node]: 
-        def _p_fu_expression(expression_node, leaf_node):
+        def _p_fu_expression(data, expression_node, leaf_node):
             def _insert(current_node, prev_node):
                 if not current_node:
                     last_node.right(expression_node)
@@ -243,14 +243,34 @@ class Parser():
         
         if   self.r_check(data[0], *(self.orders['open'])):   # ( )
             return 
+        
         elif self.r_check(data[0], *(self.orders['exp'])):    # variable
-            return
+            (data, new_head_node, new_last_node) = _p_fu_expression(data,ExprNode(data[0][1].data,self.get_precedense(data[0][1])),ExprLeaf('var',data[0][0].name))
+            return (self.p_fu_expression((data[0][len(self.orders['exp_3'][0]):],data[1]),new_head_node,new_last_node)[0],data[1])
+        
         elif self.r_check(data[0], *(self.orders['exp_2'])):  # digit
-            return
+            (data, new_head_node, new_last_node) = _p_fu_expression(data,ExprNode(data[0][1].data,self.get_precedense(data[0][1])),ExprLeaf('digit',data[0][0].name))
+            return (self.p_fu_expression((data[0][len(self.orders['exp_3'][0]):],data[1]),new_head_node,new_last_node)[0],data[1])
+        
         elif self.r_check(data[0], *(self.orders['exp_3'])):  # string
-            return
+            (data, new_head_node, new_last_node) = _p_fu_expression(data,ExprNode(data[0][1].data,self.get_precedense(data[0][1])),ExprLeaf('string',data[0][0].name))
+            return (self.p_fu_expression((data[0][len(self.orders['exp_3'][0]):],data[1]),new_head_node,new_last_node)[0],data[1])
+        
         elif self.r_check(data[0], *(self.orders['exp_4'])):  # functioncall
-            return
+            
+            (data0 ,leaf_node_parent) = self.p_function((data[0][1:],AST_Temp))
+            
+            
+            if self.r_check(data[0], *(self.orders['close'])):    # (functioncall) )
+                return 
+            elif self.r_check(data[0], *(self.orders['semi'])):   # (functioncall) ;
+                return
+            else:
+                expr_node = ExprNode(data0[1].data,self.get_precedense(data0[1]))
+                (new_data, new_head_node, new_last_node) = _p_fu_expression((data0,data[1]),expr_node,leaf_node_parent.connections[0])
+                return (self.p_fu_expression(new_data[0][1:],new_head_node,new_last_node)[0],data[1])
+            return 
+        
         elif self.r_check(data[0], *(self.orders['exp_c'])):  # var )
             return
         elif self.r_check(data[0], *(self.orders['exp_2c'])): # digit )
@@ -259,13 +279,13 @@ class Parser():
             return
         elif self.r_check(data[0], *(self.orders['exp_s'])):  # var ;
             return
-        elif self.r_check(data[0], *(self.orders['exp_2s'])): # functioncall
+        elif self.r_check(data[0], *(self.orders['exp_2s'])): # digit ;
             return
-        elif self.r_check(data[0], *(self.orders['exp_3s'])): # functioncall
+        elif self.r_check(data[0], *(self.orders['exp_3s'])): # string ;
             return
-        elif self.r_check(data[0], *(self.orders['close'])):  # (function) )
+        elif self.r_check(data[0], *(self.orders['close'])):  # (functioncall) )
             return 
-        elif self.r_check(data[0], *(self.orders['semi'])):   # (function) ;
+        elif self.r_check(data[0], *(self.orders['semi'])):   # (functioncall) ;
             return
           
           

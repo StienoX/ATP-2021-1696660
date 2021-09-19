@@ -158,6 +158,10 @@ class AST_WriteLn(AST_Node):
     def __init__(self, ast_type, connections):
         super().__init__(ast_type,connections)
 
+class AST_Temp(AST_Node):
+    def __init__(self):
+        super().__init__('temp',[])
+
 
 # pre_prossesing :: String -> String
 def pre_prossesing(program: str) -> str:
