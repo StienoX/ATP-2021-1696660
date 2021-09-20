@@ -5,6 +5,11 @@ from pathlib import Path
 def compose(functions):
     return functools.reduce(lambda f, g: lambda x: f(g(x)), functions, lambda x: x)
 
+def reverse_tuple_containing_lists(t: Tuple[List,List]):
+    t[0].reverse()
+    t[1].reverse()
+    return t
+
 # CLASS : Token
 # Brief : This class stores tokens that are generated from the lexer and used in the parser class
 # Descr : The class stores 2 values: name & data. name is used for the tokenname. data is used for the exctual data. 
