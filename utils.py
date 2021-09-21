@@ -1,5 +1,5 @@
 import functools
-from typing import List, Tuple, Callable
+from typing import List, Tuple, Callable, Union, Optional
 from pathlib import Path
 
 def compose(functions):
@@ -46,8 +46,8 @@ def check_token_equal_all(token1: Token,token2: Token) -> bool:
 # This class is the main class which all AST_Node derivatives inhereted from. Child classes are used to store more data and differentiate between AST types
 class AST_Node:
     def __init__(self, ast_type, connections = []):
-        self.type = ast_type
-        self.connections = connections
+        self.type:str = ast_type
+        self.connections:List[AST_Node] = connections
         
     def set_connections(self, connections):
         self.connections = connections

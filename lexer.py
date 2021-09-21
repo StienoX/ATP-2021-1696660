@@ -64,7 +64,7 @@ class Lexer():
         return data
     
     # lex_something_between :: ([a],[b]) -> [a] -> [a] -> (a -> b) -> ([a],[b])
-    def lex_something_between(self, data, begin, end, return_function):
+    def lex_something_between(self, data:Tuple[List,List], begin:List, end:List, return_function:Callable):
         length = len(data[0])
         if length and data[0][0] in begin:
             def _psb(i):

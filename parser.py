@@ -181,7 +181,7 @@ class Parser():
             ast_expression = _p_expression(data, 'function') # function
         if self.r_check(data[0], *(self.orders['open'])):
             
-            return self.p_expression(data[1:])
+            return data
         elif ast_expression:
             data[1].append(ast_expression)
             return self.p_fu_expression(data[len(self.orders['exp'][0]):], ast_expression, ast_expression)
@@ -222,15 +222,53 @@ class Parser():
     def p_fu_if(self, data: Tuple[List[Token],AST_Node]) -> Tuple[List[Token],AST_Node]:
         return self.p_expression(data)
     
+    def p_fu_expression_wip(self, data: Tuple[List[Token],AST_Node], head_node: ExprNode, last_node: ExprNode) -> Tuple[List[Token],AST_Node]: 
+        def _insert(data, current_node: Optional[ExprNode], prev_node: ExprNode, new_node_1: Union[ExprLeaf,ExprNode], new_node_2: Union[ExprLeaf,ExprNode]):
+            if len(head_node.connections):
+                if check_token_equal_name(data[0][0], Token('operator')): # operator leaf
+                    if(not current_node):
+                        pass
+                    elif current_node < new_node_1:
+                        # is it always right?
+                        return _insert(data, current_node.right(), current_node, new_node_1, new_node_2)
+                    else:
+                        pass
+                else: # leaf operator
+                    if(not current_node): 
+                        last_node.right(new_node_2) 
+                        new_node_2.left(new_node_2)
+                        return (head_node,new_node_2)
+                    elif current_node < new_node_2:
+                        return _insert(data, current_node.right(), current_node, new_node_1, new_node_2)
+                    else:
+                        last_node.right(new_node_1)
+                        new_node_2.left(current_node)
+                        if head_node == prev_node:
+                            data[1].connections[0] = new_node_2
+                            return (new_node_2,new_node_2)
+                        else:
+                            prev_node.right(new_node_2)
+                            return (head_node,new_node_2)
+            else: # empty ast (because we are in a () call (head_node has been moved))
+                if check_token_equal_name(data[0][0], Token('operator')): # operator leaf
+                    new_node_1.right(new_node_2)
+                    head_node.connections.append(new_node_1)
+                else: # leaf operator
+                    new_node_2.left(new_node_1)
+                    head_node.connections.append(new_node_2)
+    
+    
     # p_fu_expression :: ([Token], AST_Node) -> ([Token], AST_Node)
     def p_fu_expression(self, data: Tuple[List[Token],AST_Node], head_node: ExprNode, last_node: ExprNode) -> Tuple[List[Token],AST_Node]: 
-        def _p_fu_expression(data, operator_node, leaf_node):
+        def _p_fu_expression_left(data, operator_node, leaf_node):
             def _insert(current_node, prev_node):
-                if not current_node:
-                    last_node.right(operator_node)
+                if not len(data[1].connections):
+                    pass # empty ast
+                elif not current_node:
+                    last_node.right(operator_node) 
                     operator_node.left(leaf_node)
                     return (head_node,operator_node)
-                if current_node < operator_node:
+                elif current_node < operator_node:
                     return _insert(current_node.right(), current_node)
                 else:
                     last_node.right(leaf_node)
@@ -245,7 +283,7 @@ class Parser():
             return (data, new_head_node, new_last_node)
         
         ## probably borked at the current state
-        def _p_fu_expression_reverse(data, operator_node, leaf_node):
+        def _p_fu_expression_right(data, operator_node, leaf_node):
             def _insert(current_node, prev_node):
                 if not current_node:
                     last_node.left(operator_node)
@@ -266,32 +304,33 @@ class Parser():
             return (data, new_head_node, new_last_node)
         
         if   self.r_check(data[0], *(self.orders['open'])):   # ( )
-            (data0,data1) = self.p_expression((data[0][1:],AST_Temp))
-            last_node.right(data1.connections[0])
+            (data0,data1) = self.p_expression((data[0][1:],AST_Temp)) # giving a fake AST to not have to bother cleaning/modifing the exisiting tree
+            data1[0].connections[0].connections[0].precedense = 6 # setting precedense of the top opererator to 6 so nothing will be inserted into the () block
+            last_node.right(data1.connections[0].connections[0])
             return (data0, data[1])
         
         elif self.r_check(data[0], *(self.orders['exp'])):    # variable
-            (data, new_head_node, new_last_node) = _p_fu_expression(data,ExprNode(data[0][1].data,self.get_precedense(data[0][1])),ExprLeaf('var',data[0][0].data))
+            (data, new_head_node, new_last_node) = _p_fu_expression_left(data,ExprNode(data[0][1].data,self.get_precedense(data[0][1])),ExprLeaf('var',data[0][0].data))
             return (self.p_fu_expression((data[0][len(self.orders['exp'][0]):],data[1]),new_head_node,new_last_node)[0],data[1])
         
         elif self.r_check(data[0], *(self.orders['exp_2'])):  # digit
-            (data, new_head_node, new_last_node) = _p_fu_expression(data,ExprNode(data[0][1].data,self.get_precedense(data[0][1])),ExprLeaf('digit',data[0][0].data))
+            (data, new_head_node, new_last_node) = _p_fu_expression_left(data,ExprNode(data[0][1].data,self.get_precedense(data[0][1])),ExprLeaf('digit',data[0][0].data))
             return (self.p_fu_expression((data[0][len(self.orders['exp_2'][0]):],data[1]),new_head_node,new_last_node)[0],data[1])
         
         elif self.r_check(data[0], *(self.orders['exp_3'])):  # string
-            (data, new_head_node, new_last_node) = _p_fu_expression(data,ExprNode(data[0][1].data,self.get_precedense(data[0][1])),ExprLeaf('string',data[0][0].data))
+            (data, new_head_node, new_last_node) = _p_fu_expression_left(data,ExprNode(data[0][1].data,self.get_precedense(data[0][1])),ExprLeaf('string',data[0][0].data))
             return (self.p_fu_expression((data[0][len(self.orders['exp_3'][0]):],data[1]),new_head_node,new_last_node)[0],data[1])
         
         elif self.r_check(data[0], *(reverse_tuple_containing_lists(self.orders['exp']))):    # operator variable
-            (data, new_head_node, new_last_node) = _p_fu_expression_reverse(data,ExprNode(data[0][0].data,self.get_precedense(data[0][0])),ExprLeaf('var',data[0][1].data))
+            (data, new_head_node, new_last_node) = _p_fu_expression_right(data,ExprNode(data[0][0].data,self.get_precedense(data[0][0])),ExprLeaf('var',data[0][1].data))
             return (self.p_fu_expression((data[0][len(self.orders['exp'][0]):],data[1]),new_head_node,new_last_node)[0],data[1])
         
         elif self.r_check(data[0], *(reverse_tuple_containing_lists(self.orders['exp_2']))):  # operator digit
-            (data, new_head_node, new_last_node) = _p_fu_expression_reverse(data,ExprNode(data[0][0].data,self.get_precedense(data[0][0])),ExprLeaf('digit',data[0][1].data))
+            (data, new_head_node, new_last_node) = _p_fu_expression_right(data,ExprNode(data[0][0].data,self.get_precedense(data[0][0])),ExprLeaf('digit',data[0][1].data))
             return (self.p_fu_expression((data[0][len(self.orders['exp_2'][0]):],data[1]),new_head_node,new_last_node)[0],data[1])
         
         elif self.r_check(data[0], *(reverse_tuple_containing_lists(self.orders['exp_3']))):  # operator string
-            (data, new_head_node, new_last_node) = _p_fu_expression_reverse(data,ExprNode(data[0][0].data,self.get_precedense(data[0][0])),ExprLeaf('string',data[0][1].data))
+            (data, new_head_node, new_last_node) = _p_fu_expression_right(data,ExprNode(data[0][0].data,self.get_precedense(data[0][0])),ExprLeaf('string',data[0][1].data))
             return (self.p_fu_expression((data[0][len(self.orders['exp_3'][0]):],data[1]),new_head_node,new_last_node)[0],data[1])
         
         
@@ -302,7 +341,7 @@ class Parser():
                 return (data0[1:],data[1])
             else:
                 expr_node = ExprNode(data0[1].data,self.get_precedense(data0[1]))
-                (new_data, new_head_node, new_last_node) = _p_fu_expression((data0,data[1]),expr_node,leaf_node_parent.connections[0])
+                (new_data, new_head_node, new_last_node) = _p_fu_expression_left((data0,data[1]),expr_node,leaf_node_parent.connections[0])
                 del leaf_node_parent
                 return (self.p_fu_expression(new_data[0][1:],new_head_node,new_last_node)[0],data[1])
         
