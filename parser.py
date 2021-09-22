@@ -232,7 +232,14 @@ class Parser():
                         # is it always right?
                         return _insert(data, current_node.right(), current_node, new_node_1, new_node_2)
                     else:
-                        pass
+                        #last_node.right(new_node_1)
+                        #new_node_2.left(current_node)
+                        if head_node == prev_node:
+                            data[1].connections[0] = new_node_1
+                            return (new_node_1,new_node_1)
+                        else:
+                            prev_node.right(new_node_1)
+                            return (head_node,new_node_1)
                 else: # leaf operator
                     if(not current_node): 
                         last_node.right(new_node_2) 
