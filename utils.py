@@ -53,30 +53,20 @@ class AST_Node:
     def __init__(self, ast_type, connections = []):
         self.type:str = ast_type
         self.connections:List[AST_Node] = connections
-        
-    def set_connections(self, connections):
-        self.connections = connections
-        
-    def get_connections(self):
-        return self.connectionsTypeVar
-    
-    def get_type(self):
-        return self.type
-    
-    def set_type(self, new_type):
-        self.type = new_type
     
     def __getitem__(self, key):
         return self.connections[key]
     
     def __setitem__(self, key, node):
         self.connections[key] = node
+        return self
         
     def __delitem__(self, key):
         del self.connections[key]
         
     def append(self, node):
         self.connections.append(node)
+        return self
         
     def __str__(self, level=0):
         ret = ["-"*level+repr(self.type)+"\n"]
@@ -187,26 +177,14 @@ class ExprNode(AST_Node):
         self.precedense = precedense
         self.left = None
         self.right = None
-    
-    def left(self, left = None):
-        if left:
-            self.left = left
-            self.connections = []
-            self.connections.append(self.left)
-            if self.right:
-                self.connections.append(self.right)
-        return self.left
-    
-    def right(self, right = None):
-        if right:
-            self.right = right
-            self.connections = []
-            self.connections.append(self.left)
-            self.connections.append(self.right)
-        return self.right
-    
-    def __str__(self):
-        return '(' + self.data + ') '
+
+    def __str__(self, level=0):
+        ret = "-"*level+repr(self.type)+ ',' + repr(self.data)+"\n"
+        if self.right:
+            ret += 'r:' + self.right.__str__(level+1)
+        if self.left:
+            ret += 'l:' + self.right.__str__(level+1)
+        return ''.join(ret)
         
     def __eq__(self, other):
         return self.precedense == other.precedense

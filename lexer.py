@@ -48,7 +48,7 @@ class Lexer():
         
     
     # lex_something :: ([a],[b]) -> (a -> b) -> ([a],[b])
-    def lex_something(self, data:Tuple[List[A],List[B]], check:Callable[[A],B], return_function:Callable[[],]):
+    def lex_something(self, data:Tuple[List[A],List[B]], check:Callable[[A],B], return_function:Callable[[A],B]) -> Tuple[List[A],List[B]]:
         if len(check):
             if check[0] == data[0][:len(check[0])]:
                 data[1].append(return_function(check[0]))
@@ -68,7 +68,7 @@ class Lexer():
     def lex_something_between(self, data:Tuple[List[A],List[B]], begin:List[A], end:List[A], return_function:Callable[[A],B]) -> Tuple[List[A],List[B]]:
         length = len(data[0])
         if length and data[0][0] in begin:
-            def _psb(i:int): # in a functional language this would have been a 'where'
+            def _psb(i:int): # in a functional language (haskell) this would have been a 'where'
                 if i > length:
                     print("ERROR: lacking closing for: "+str(data[0][0]))
                     return ([],[])
