@@ -1,6 +1,11 @@
 import functools
-from typing import List, Tuple, Callable, Union, Optional
+from typing import List, Tuple, Callable, Union, Optional, TypeVar
 from pathlib import Path
+
+A = TypeVar("A")
+B = TypeVar("B")
+C = TypeVar("C")
+D = TypeVar("D")
 
 def compose(functions):
     return functools.reduce(lambda f, g: lambda x: f(g(x)), functions, lambda x: x)
@@ -53,7 +58,7 @@ class AST_Node:
         self.connections = connections
         
     def get_connections(self):
-        return self.connections
+        return self.connectionsTypeVar
     
     def get_type(self):
         return self.type

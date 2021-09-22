@@ -46,8 +46,9 @@ class Lexer():
                                 self.lex_strings
                               ])
         
+    
     # lex_something :: ([a],[b]) -> (a -> b) -> ([a],[b])
-    def lex_something(self, data, check, return_function):
+    def lex_something(self, data:Tuple[List[A],List[B]], check:Callable[[A],B], return_function:Callable[[],]):
         if len(check):
             if check[0] == data[0][:len(check[0])]:
                 data[1].append(return_function(check[0]))
@@ -56,18 +57,18 @@ class Lexer():
                 return self.lex_something(data, check[1:], return_function)
         return data
 
-    # combine_same :: ([a],[b]) -> (([a],[b]) -> (c,d)) (c -> d -> bool) -> (([a],[b]) -> c -> d -> ([a],[b])) -> ([a],[b])
-    def combine_something(self, data, get_function, check_function, combine_function):
+    # combine_same :: ([a],[b]) -> (([a],[b]) -> (c,d)) -> (c -> d -> bool) -> (([a],[b]) -> c -> d -> ([a],[b])) -> ([a],[b])
+    def combine_something(self, data:Tuple[List[A],List[B]], get_function:Callable[[Tuple[List[A],List[B]]],Tuple[C,D]], check_function:Callable[[C,D],bool], combine_function:Callable[[Tuple[List[A],List[B]],C,D],Tuple[List[A],List[B]]]) -> Tuple[List[A],List[B]]:
         items = get_function(data)
         if items and check_function(*items):
             return combine_function(data,*items)
         return data
     
     # lex_something_between :: ([a],[b]) -> [a] -> [a] -> (a -> b) -> ([a],[b])
-    def lex_something_between(self, data:Tuple[List,List], begin:List, end:List, return_function:Callable):
+    def lex_something_between(self, data:Tuple[List[A],List[B]], begin:List[A], end:List[A], return_function:Callable[[A],B]) -> Tuple[List[A],List[B]]:
         length = len(data[0])
         if length and data[0][0] in begin:
-            def _psb(i:int):
+            def _psb(i:int): # in a functional language this would have been a 'where'
                 if i > length:
                     print("ERROR: lacking closing for: "+str(data[0][0]))
                     return ([],[])
@@ -122,9 +123,9 @@ class Lexer():
     # combine_digits :: (String, [Token]) -> (String, [Token])
     def combine_digits(self,    data: Tuple[str, List[Token]]) -> Tuple[str, List[Token]]:
         return self.combine_something(data,
-                                      lambda d: (d[1][-1],d[1][-2]) if len(d[1]) > 1 else None, 
-                                      lambda a,b: a.name == 'digit' and  b.name == a.name, 
-                                      lambda d,a,b: (d[0],d[1][:-2]+[Token(a.name,b.data+a.data)]))
+                                      lambda d: (d[1][-1],d[1][-2]) if len(d[1]) > 1 else None,     # get the last two tokens
+                                      lambda a,b: a.name == 'digit' and  b.name == a.name,          # compare if they are both digit
+                                      lambda d,a,b: (d[0],d[1][:-2]+[Token(a.name,b.data+a.data)])) # add them together (digits are saved as strings)
         
     # lex_all :: (String, [Token]) -> (String, [Token])    
     def lex_all(self,  data: Tuple[str, List[Token]]) -> Tuple[str, List[Token]]:
