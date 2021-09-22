@@ -52,11 +52,11 @@ class Parser():
                                                     [check_token_equal_name       ,check_token_equal_name]),
                                  'exp_4':       (   [Token('identifier')          ,Token('parentheses_open')],
                                                     [check_token_equal_name       ,check_token_equal_name]),
-                                 'exp_c':       (   [Token('identifier')          ,Token('parenteses_closed')],
+                                 'exp_c':       (   [Token('identifier')          ,Token('parentheses_closed')],
                                                     [check_token_equal_name       ,check_token_equal_name]),
-                                 'exp_2c':      (   [Token('digit')               ,Token('parenteses_closed')],
+                                 'exp_2c':      (   [Token('digit')               ,Token('parentheses_closed')],
                                                     [check_token_equal_name       ,check_token_equal_name]),
-                                 'exp_3c':      (   [Token('string')              ,Token('parenteses_closed')],
+                                 'exp_3c':      (   [Token('string')              ,Token('parentheses_closed')],
                                                     [check_token_equal_name       ,check_token_equal_name]),
                                  'exp_s':       (   [Token('identifier')          ,Token('keyword',';')],
                                                     [check_token_equal_name       ,check_token_equal_all]),
@@ -65,13 +65,13 @@ class Parser():
                                  'exp_3s':      (   [Token('string')              ,Token('keyword',';')],
                                                     [check_token_equal_name       ,check_token_equal_all]),
                                 }
-        self.precedense_order = [(Token('operator','<='),1),(Token('operator','>='),1),(Token('operator'),'=',1), (Token('operator',':='),0), (Token('operator','::='),0), (Token('operator',':'),1), (Token('operator','<'),1), (Token('operator','>'),1), (Token('operator','+'),2), (Token('operator','-'),2), (Token('operator','*'),3), (Token('operator','/'),3)]
+        self.precedence_order = [(Token('operator','<='),1),(Token('operator','>='),1),(Token('operator'),'=',1), (Token('operator',':='),0), (Token('operator','::='),0), (Token('operator',':'),1), (Token('operator','<'),1), (Token('operator','>'),1), (Token('operator','+'),2), (Token('operator','-'),2), (Token('operator','*'),3), (Token('operator','/'),3)]
     
     # r_check :: [Token] -> [Token] -> [([Token] -> [Token] -> Bool)]
     def r_check(self, tokens: List[Token], expected_tokens: List[Token], checks: List[Callable[[[Token],[Token]], bool]]) -> bool:
         if not len(checks):
             return True
-        elif checks[0](tokens[0],expected_tokens[0]):
+        elif len(tokens) and checks[0](tokens[0],expected_tokens[0]):
             return self.r_check(tokens[1:],expected_tokens[1:],checks[1:])
         return False
 
@@ -80,13 +80,13 @@ class Parser():
     __repr__ = __str__
     
     def get_precedence(self, token: Token) -> int:
-        def _get_precedense(po: List[Tuple[Token,int]]) -> int:  # in a functional language (haskell) this would have been a 'where'
+        def _get_precedence(po: List[Tuple[Token,int]]) -> int:  # in a functional language (haskell) this would have been a 'where'
             if len(po):
-                return self._get_precedense(po[1:])
-            elif token == po[0][0]:
-                return po[0][1]
+                if check_token_equal_all(token,po[0][0]):
+                    return po[0][1]
+                return _get_precedence(po[1:])
             return 9
-        return _get_precedense(self.precedense_order)
+        return _get_precedence(self.precedence_order)
     
     ## INIT PARSER ##
     
@@ -170,7 +170,7 @@ class Parser():
         if self.r_check(data[0], *(self.orders['exp'])) or self.r_check(data[0], *(self.orders['exp_2'])) or self.r_check(data[0], *(self.orders['exp_3'])) or self.r_check(data[0], *(self.orders['exp_4'])) or self.r_check(data[0], *(self.orders['open'])):
             ast_expression = AST_Expression('expression',[])
             data[1].append(ast_expression)
-            return (self.p_fu_expression(data[len(self.orders['exp'][0]):], ast_expression, ast_expression), data[1])
+            return (self.p_fu_expression((data[0][len(self.orders['exp'][0]):],ast_expression), ast_expression, ast_expression), data[1])
         return data
     
     
@@ -206,51 +206,6 @@ class Parser():
     # p_fu_if :: ([Token], AST_Node) -> ([Token], AST_Node)
     def p_fu_if(self, data: Tuple[List[Token],AST_Node]) -> Tuple[List[Token],AST_Node]:
         return self.p_expression(data)
-    
-    def p_fu_expression_wip(self, data: Tuple[List[Token],AST_Node], head_node: ExprNode, last_node: ExprNode) -> Tuple[List[Token],AST_Node]: 
-        def _insert(data, current_node: Optional[ExprNode], prev_node: ExprNode, new_node_1: Union[ExprLeaf,ExprNode], new_node_2: Union[ExprLeaf,ExprNode]) -> Tuple[ExprNode,ExprNode]:
-            if len(head_node.connections):
-                if isinstance(new_node_1,ExprNode): # operator -> leaf
-                    if(not current_node):
-                        last_node.right = new_node_1
-                        new_node_1.left = new_node_2
-                        return (head_node,new_node_1)
-                    elif current_node < new_node_1:
-                        # is it always right?
-                        return _insert(data, current_node.right(), current_node, new_node_1, new_node_2)
-                    else:
-                        last_node.right = new_node_2
-                        new_node_1.left = current_node
-                        if head_node == prev_node:
-                            data[1].connections[0] = new_node_1
-                            return (new_node_1,new_node_1)
-                        else:
-                            prev_node.right = new_node_1
-                            return (head_node,new_node_1)
-                else: # leaf ->  operator
-                    if(not current_node): 
-                        last_node.right = new_node_2 
-                        new_node_2.left = new_node_1 
-                        return (head_node,new_node_2)
-                    elif current_node < new_node_2:
-                        return _insert(data, current_node.right(), current_node, new_node_1, new_node_2)
-                    else:
-                        last_node.right = new_node_1
-                        new_node_2.left = current_node
-                        if head_node == prev_node:
-                            data[1].connections[0] = new_node_2
-                            return (new_node_2,new_node_2)
-                        else:
-                            prev_node.right = new_node_2 
-                            return (head_node,new_node_2)
-            else: # empty ast (because we are in a () call (head_node has been moved))
-                if isinstance(new_node_1,ExprNode): # operator leaf
-                    new_node_1.right(new_node_2)
-                    head_node.connections.append(new_node_1)
-                else: # leaf operator
-                    new_node_2.left(new_node_1)
-                    head_node.connections.append(new_node_2)
-    
     
     # p_fu_expression :: ([Token], AST_Node) -> ([Token], AST_Node)
     def p_fu_expression(self, data: Tuple[List[Token],AST_Node], head_node: ExprNode, last_node: ExprNode) -> Tuple[List[Token],AST_Node]: 
@@ -306,30 +261,32 @@ class Parser():
             return (data0, data[1])
         
         elif self.r_check(data[0], *(self.orders['exp'])):    # variable
-            (data, new_head_node, new_last_node) = _insert(data,)
-            return (self.p_fu_expression((data[0][len(self.orders['exp'][0]):],data[1]),new_head_node,new_last_node)[0],data[1])
+            (data, new_head_node, new_last_node) = _insert(data,head_node, last_node, ExprLeaf('var',data[0][0].data),ExprNode(data[0][1].data,self.get_precedence(data[0][1])))
+            return (self.p_fu_expression((data[0][len(self.orders['exp'][0]):],data[1]),new_head_node,new_last_node)[0],data[1])[0]
         
         elif self.r_check(data[0], *(self.orders['exp_2'])):  # digit
-            (data, new_head_node, new_last_node) = _p_fu_expression_left(data,ExprNode(data[0][1].data,self.get_precedence(data[0][1])),ExprLeaf('digit',data[0][0].data))
-            return (self.p_fu_expression((data[0][len(self.orders['exp_2'][0]):],data[1]),new_head_node,new_last_node)[0],data[1])
+            (data, new_head_node, new_last_node) = _insert(data,head_node, last_node, ExprLeaf('digit',data[0][0].data),ExprNode(data[0][1].data,self.get_precedence(data[0][1])))
+            return (self.p_fu_expression((data[0][len(self.orders['exp_2'][0]):],data[1]),new_head_node,new_last_node)[0],data[1])[0]
         
         elif self.r_check(data[0], *(self.orders['exp_3'])):  # string
-            (data, new_head_node, new_last_node) = _p_fu_expression_left(data,ExprNode(data[0][1].data,self.get_precedence(data[0][1])),ExprLeaf('string',data[0][0].data))
-            return (self.p_fu_expression((data[0][len(self.orders['exp_3'][0]):],data[1]),new_head_node,new_last_node)[0],data[1])
+            (data, new_head_node, new_last_node) = _insert(data,head_node, last_node, ExprLeaf('string',data[0][0].data),ExprNode(data[0][1].data,self.get_precedence(data[0][1])))
+            return (self.p_fu_expression((data[0][len(self.orders['exp_3'][0]):],data[1]),new_head_node,new_last_node)[0],data[1])[0]
         
         elif self.r_check(data[0], *(reverse_tuple_containing_lists(self.orders['exp']))):    # operator variable
-            (data, new_head_node, new_last_node) = _p_fu_expression_right(data,ExprNode(data[0][0].data,self.get_precedence(data[0][0])),ExprLeaf('var',data[0][1].data))
-            return (self.p_fu_expression((data[0][len(self.orders['exp'][0]):],data[1]),new_head_node,new_last_node)[0],data[1])
+            (data, new_head_node, new_last_node) = _insert(data,head_node, last_node, ExprNode(data[0][1].data,self.get_precedence(data[0][1])), ExprLeaf('var',data[0][0].data))
+            return (self.p_fu_expression((data[0][len(self.orders['exp'][0]):],data[1]),new_head_node,new_last_node)[0],data[1])[0]
         
         elif self.r_check(data[0], *(reverse_tuple_containing_lists(self.orders['exp_2']))):  # operator digit
-            (data, new_head_node, new_last_node) = _p_fu_expression_right(data,ExprNode(data[0][0].data,self.get_precedence(data[0][0])),ExprLeaf('digit',data[0][1].data))
-            return (self.p_fu_expression((data[0][len(self.orders['exp_2'][0]):],data[1]),new_head_node,new_last_node)[0],data[1])
+            (data, new_head_node, new_last_node) = _insert(data,head_node, last_node, ExprNode(data[0][1].data,self.get_precedence(data[0][1])), ExprLeaf('digit',data[0][0].data))
+            return (self.p_fu_expression((data[0][len(self.orders['exp_2'][0]):],data[1]),new_head_node,new_last_node)[0],data[1])[0]
         
         elif self.r_check(data[0], *(reverse_tuple_containing_lists(self.orders['exp_3']))):  # operator string
-            (data, new_head_node, new_last_node) = _p_fu_expression_right(data,ExprNode(data[0][0].data,self.get_precedence(data[0][0])),ExprLeaf('string',data[0][1].data))
-            return (self.p_fu_expression((data[0][len(self.orders['exp_3'][0]):],data[1]),new_head_node,new_last_node)[0],data[1])
+            (data, new_head_node, new_last_node) = _insert(data,head_node, last_node, ExprNode(data[0][1].data,self.get_precedence(data[0][1])), ExprLeaf('string',data[0][0].data))
+            return (self.p_fu_expression((data[0][len(self.orders['exp_3'][0]):],data[1]),new_head_node,new_last_node)[0],data[1])[0]
         
         
+        
+        # needs to be updated
         elif self.r_check(data[0], *(self.orders['exp_4'])):  # functioncall
             (data0 ,leaf_node_parent) = self.p_function((data[0][1:],AST_Temp))
             if self.r_check(data0, *(self.orders['close'])) or self.r_check(data[0], *(self.orders['semi'])):    # (functioncall) ) or ;
@@ -342,13 +299,13 @@ class Parser():
                 return (self.p_fu_expression(new_data[0][1:],new_head_node,new_last_node)[0],data[1])
         
         elif self.r_check(data[0], *(self.orders['exp_c'])) or self.r_check(data[0], *(self.orders['exp_s'])):  # var )
-            last_node.right(ExprLeaf('var',data[0][0].data))
+            last_node.right = ExprLeaf('var',data[0][0].data)
             return (data[0][2:],data[1])
         elif self.r_check(data[0], *(self.orders['exp_2c'])) or self.r_check(data[0], *(self.orders['exp_2s'])): # digit ) or ;
-            last_node.right(ExprLeaf('digit',data[0][0].data))
+            last_node.right = ExprLeaf('digit',data[0][0].data)
             return (data[0][2:],data[1])
         elif self.r_check(data[0], *(self.orders['exp_3c'])) or self.r_check(data[0], *(self.orders['exp_3s'])): # string )
-            last_node.right(ExprLeaf('string',data[0][0].data))
+            last_node.right = ExprLeaf('string',data[0][0].data)
             return (data[0][2:],data[1])
         else:
             print(data)

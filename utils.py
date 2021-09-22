@@ -181,10 +181,10 @@ class ExprNode(AST_Node):
     def __str__(self, level=0):
         ret = "-"*level+repr(self.type)+ ',' + repr(self.data)+"\n"
         if self.right:
-            ret += 'r:' + self.right.__str__(level+1)
+            ret += 'r' + self.right.__str__(level+1)
         if self.left:
-            ret += 'l:' + self.right.__str__(level+1)
-        return ''.join(ret)
+            ret += 'l' + self.left.__str__(level+1)
+        return ret
         
     def __eq__(self, other):
         return self.precedense == other.precedense
@@ -203,7 +203,7 @@ class ExprLeaf(AST_Node):
         self.type = type #type or function or var
         self.data = data
         
-    def __str__(self):
-        return '(' + self.type + ',' + self.data + ') '
+    def __str__(self, level=0):
+        return "-"*level+repr(self.type)+ ',' + repr(self.data)+"\n"
     
     __repr__ = __str__
