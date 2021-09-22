@@ -46,7 +46,7 @@ class Lexer():
                                 self.lex_strings
                               ])
         
-    # lex_something :: ([a],[b]) -> a -> (a -> b) -> ([a],[b])
+    # lex_something :: ([a],[b]) -> (a -> b) -> ([a],[b])
     def lex_something(self, data, check, return_function):
         if len(check):
             if check[0] == data[0][:len(check[0])]:
@@ -67,7 +67,7 @@ class Lexer():
     def lex_something_between(self, data:Tuple[List,List], begin:List, end:List, return_function:Callable):
         length = len(data[0])
         if length and data[0][0] in begin:
-            def _psb(i):
+            def _psb(i:int):
                 if i > length:
                     print("ERROR: lacking closing for: "+str(data[0][0]))
                     return ([],[])
