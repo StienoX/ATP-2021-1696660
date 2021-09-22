@@ -74,10 +74,11 @@ class AST_Node:
         self.connections.append(node)
         
     def __str__(self, level=0):
-        ret = "-"*level+repr(self.type)+"\n"
-        for connection in self.connections:
-            ret += connection.__str__(level+1)
-        return ret
+        ret = ["-"*level+repr(self.type)+"\n"]
+        ret.extend(list((map(lambda connection: connection.__str__(level+1), self.connections))))
+        return ''.join(ret)
+    
+        
     
     __repr__ = __str__
     
