@@ -73,15 +73,12 @@ class AST_Node:
         ret.extend(list((map(lambda connection: connection.__str__(level+1), self.connections))))
         return ''.join(ret)
     
-        
-    
     __repr__ = __str__
     
 class AST_ERROR(AST_Node):
     def __init__(self, connections, program_name):
         super().__init__("error",[connections])
         self.program_name = program_name
-
 
 class AST_Program(AST_Node):
     def __init__(self, ast_type, connections, program_name):

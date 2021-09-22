@@ -65,7 +65,21 @@ class Parser():
                                  'exp_3s':      (   [Token('string')              ,Token('keyword',';')],
                                                     [check_token_equal_name       ,check_token_equal_all]),
                                 }
-        self.precedence_order = [(Token('operator','<='),1),(Token('operator','>='),1),(Token('operator'),'=',1), (Token('operator',':='),0), (Token('operator','::='),0), (Token('operator',':'),1), (Token('operator','<'),1), (Token('operator','>'),1), (Token('operator','+'),2), (Token('operator','-'),2), (Token('operator','*'),3), (Token('operator','/'),3)]
+        self.precedence_order = [(Token('operator','<='),1),
+                                 (Token('operator','>='),1),
+                                 (Token('operator'),'=',1), 
+                                 (Token('operator',':='),0), 
+                                 (Token('operator','::='),0), 
+                                 (Token('operator',':'),1), 
+                                 (Token('operator','<'),1), 
+                                 (Token('operator','>'),1), 
+                                 (Token('operator','+'),2), 
+                                 (Token('operator','-'),2), 
+                                 (Token('operator','*'),3), 
+                                 (Token('operator','/'),3),
+                                 (Token('operator','or'),0),
+                                 (Token('operator','and'),0),
+                                 ]
     
     # r_check :: [Token] -> [Token] -> [([Token] -> [Token] -> Bool)]
     def r_check(self, tokens: List[Token], expected_tokens: List[Token], checks: List[Callable[[[Token],[Token]], bool]]) -> bool:
