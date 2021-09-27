@@ -2,7 +2,7 @@ program Printing;
 
 function Print(j : integer);
 begin
-    WriteLn('j:',j)
+    WriteLn('j:',j )
 end;
 
 function fib(x:integer):integer;

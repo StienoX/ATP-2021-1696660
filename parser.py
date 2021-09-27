@@ -236,7 +236,7 @@ class Parser():
     
     def p_fu_if_block(self, data: Tuple[List[Token],AST_Node]) -> Tuple[List[Token],AST_Node]:
         if self.r_check(data[0],*(self.orders['then'])):
-            return self.p_fu_if_else(self.parse_until_no_change((data[0][1:],data[1]), [self.p_if,self.p_var,self.p_writeLn,self.p_expression,self.p_function_call]))
+            return self.p_semicolomn(self.p_fu_if_else(self.parse_until_no_change((data[0][1:],data[1]), [self.p_if,self.p_var,self.p_writeLn,self.p_expression,self.p_function_call])))
         return data
     
     def p_fu_if_else(self, data: Tuple[List[Token],AST_Node]) -> Tuple[List[Token],AST_Node]: 
@@ -283,17 +283,14 @@ class Parser():
 
         elif self.r_check(data[0], *(self.orders['exp'])):    # variable
             head_node = _insert(ExprLeaf('var',data[0][0].data),ExprNode(data[0][1].data,self.get_precedence(data[0][1])),head_node)
-            print(1)
             return self.p_fu_expression((data[0][len(self.orders['exp'][0]):],head_node),head_node)
         
         elif self.r_check(data[0], *(self.orders['exp_2'])):  # digit
             head_node = _insert(ExprLeaf('digit',data[0][0].data),ExprNode(data[0][1].data,self.get_precedence(data[0][1])),head_node)
-            print(2)
             return self.p_fu_expression((data[0][len(self.orders['exp_2'][0]):],head_node),head_node)
         
         elif self.r_check(data[0], *(self.orders['exp_3'])):  # string
             head_node = _insert(ExprLeaf('string',data[0][0].data),ExprNode(data[0][1].data,self.get_precedence(data[0][1])),head_node)
-            print(3)
             return self.p_fu_expression((data[0][len(self.orders['exp_3'][0]):],head_node),head_node)
         
         elif self.r_check(data[0], *(self.orders['exp_c'])) or self.r_check(data[0], *(self.orders['exp_s'])):  # var )
@@ -310,6 +307,7 @@ class Parser():
         
         elif self.r_check(data[0], *(self.orders['exp_4'])):  # functioncall
             (data_0 ,leaf_node_parent) = self.p_function((data[0][1:],AST_Temp()))
+            print(data_0)
             if self.r_check(data_0, *(self.orders['close'])) or self.r_check(data[0], *(self.orders['semi'])):    # (functioncall) ) or ;
                 head_node = _simple_insert_first_right(head_node,leaf_node_parent.connections[0])
                 return (data[0][len(self.orders['close'][0]):],head_node)
@@ -321,15 +319,15 @@ class Parser():
         
         
         # no closing ')' or ';'
-        elif self.r_check(data[0], *(self.orders['digit'])) or self.r_check(data[0], *(self.orders['exp_2s'])): # digit
+        elif self.r_check(data[0], *(self.orders['digit'])): # digit
             head_node = _simple_insert_first_right(head_node,ExprLeaf('digit',data[0][0].data))
             return (data[0][len(self.orders['digit'][0]):],head_node)
         
-        elif self.r_check(data[0], *(self.orders['str'])) or self.r_check(data[0], *(self.orders['exp_3s'])): # string 
+        elif self.r_check(data[0], *(self.orders['str'])): # string 
             head_node = _simple_insert_first_right(head_node,ExprLeaf('string',data[0][0].data))
             return (data[0][len(self.orders['str'][0]):],head_node)
         
-        elif self.r_check(data[0], *(self.orders['var'])) or self.r_check(data[0], *(self.orders['exp_s'])):  # var
+        elif self.r_check(data[0], *(self.orders['var'])):  # var
             head_node = _simple_insert_first_right(head_node,ExprLeaf('var',data[0][0].data))
             return (data[0][len(self.orders['var'][0]):],head_node)
         
@@ -361,10 +359,9 @@ class Parser():
     
     # p_function_call_param :: ([Token],AST_Node) -> ([Token], AST_Node)
     def p_function_call_param(self, data: Tuple[List[Token],AST_Node]) -> Tuple[List[Token],AST_Node]:
-        new_data = self.p_expression(data)
+        new_data = self.p_expression((data[0],AST_Parameter('list',[],'expression','expression')))
         if not (new_data[0] == data[0]):
-            ast_param = AST_Parameter('list',[], data[0][0].data, data[0][0].name)
-            data[1].append(ast_param)
+            data[1].append(new_data[1])
             return (new_data[0],data[1])
         if self.r_check(data[0], *(self.orders['list'])) or self.r_check(data[0], *(self.orders['str_list'])):
             ast_param = AST_Parameter('list',[], data[0][1].data, data[0][1].name)
