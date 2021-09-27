@@ -39,7 +39,13 @@ def check_token_equal_name(token1: Token,token2: Token) -> bool:
 
 # check_token_equal_data :: Token -> Token -> Bool
 def check_token_equal_data(token1: Token,token2: Token) -> bool:
-    return token1.data == token2.data
+    try:
+        return token1.data == token2.data
+    except:
+        print("ERROR GOT AN INVALED TOKEN")
+        print(token1)
+        print(token2)
+        return False
 
 # check_token_equal_all :: Token -> Token -> Bool
 def check_token_equal_all(token1: Token,token2: Token) -> bool:
@@ -132,7 +138,14 @@ class AST_RepeatBlock(AST_Node):
 class AST_Expression(AST_Node):
     def __init__(self, ast_type, connections):
         super().__init__(ast_type,connections)
-        self.expression = None
+        self.precedence = -1
+        self.right = None
+        
+    def __str__(self, level=0):
+        ret = "*"*level+repr(self.type)+"\n"
+        if self.right:
+            ret += '' + self.right.__str__(level+1)
+        return ret
         
 class AST_ExpressionAssignment(AST_Node):
     def __init__(self, ast_type, connections, var_name):
@@ -168,29 +181,42 @@ def pre_prossesing(program: str) -> str:
     return program
 
 class ExprNode(AST_Node):
-    def __init__(self, data, precedense):
+    def __init__(self, data, precedence):
         super().__init__("expression_node",[])
         self.data = data
-        self.precedense = precedense
-        self.left = None
-        self.right = None
+        self.precedence = precedence
+        self.left: Union[None, ExprNode, ExprLeaf] = None
+        self.right: Union[None, ExprNode, ExprLeaf] = None
+        self.repeat = False
+        self.stop = False
 
     def __str__(self, level=0):
-        ret = "-"*level+repr(self.type)+ ',' + repr(self.data)+"\n"
+        if self.stop:
+            self.stop = False
+            return "+"*level+repr(self.type)+ ',' + repr(self.data)+"\n"
+        
+        if self.repeat:
+            print("HEY WE HAVE A CIRCULAIR STUFF")
+            self.stop = True
+        
+            
+        self.repeat = True
+        ret = "*"*level+repr(self.type)+ ',' + repr(self.data)+"\n"
         if self.right:
             ret += 'r' + self.right.__str__(level+1)
         if self.left:
             ret += 'l' + self.left.__str__(level+1)
+        self.repeat = False
         return ret
         
     def __eq__(self, other):
-        return self.precedense == other.precedense
+        return self.precedence == other.precedence
     
     def __lt__(self, other):
-        return self.precedense < other.precedense
+        return self.precedence < other.precedence
     
     def __gt__(self, other):
-        return self.precedense > other.precedense
+        return self.precedence > other.precedence
     
     __repr__ = __str__
     
@@ -201,6 +227,6 @@ class ExprLeaf(AST_Node):
         self.data = data
         
     def __str__(self, level=0):
-        return "-"*level+repr(self.type)+ ',' + repr(self.data)+"\n"
+        return "*"*level+repr(self.type)+ ',' + repr(self.data)+"\n"
     
     __repr__ = __str__
