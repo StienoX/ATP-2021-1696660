@@ -39,7 +39,7 @@ def check_token_equal_name(token1: Token,token2: Token) -> bool:
 
 # check_token_equal_data :: Token -> Token -> Bool
 def check_token_equal_data(token1: Token,token2: Token) -> bool:
-    try:
+    try: ## debugging can be removed
         return token1.data == token2.data
     except:
         print("ERROR GOT AN INVALED TOKEN")
@@ -192,26 +192,26 @@ class ExprNode(AST_Node):
         self.precedence = precedence
         self.left: Union[None, ExprNode, ExprLeaf] = None
         self.right: Union[None, ExprNode, ExprLeaf] = None
-        self.repeat = False
-        self.stop = False
+        self.repeat = False ## debugging can be removed
+        self.stop = False   ## debugging can be removed
 
     def __str__(self, level=0):
-        if self.stop:
+        if self.stop: ## debugging can be removed
             self.stop = False
             return "+"*level+repr(self.type)+ ',' + repr(self.data)+"\n"
         
-        if self.repeat:
+        if self.repeat: ## debugging can be removed
             print("HEY WE HAVE A CIRCULAIR STUFF")
             self.stop = True
         
             
-        self.repeat = True
+        self.repeat = True  ## debugging can be removed
         ret = "*"*level+repr(self.type)+ ',' + repr(self.data)+"\n"
         if self.right:
             ret += 'r' + self.right.__str__(level+1)
         if self.left:
             ret += 'l' + self.left.__str__(level+1)
-        self.repeat = False
+        self.repeat = False ## debugging can be removed
         return ret
         
     def __eq__(self, other):
