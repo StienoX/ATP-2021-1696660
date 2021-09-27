@@ -144,7 +144,7 @@ class AST_Expression(AST_Node):
     def __str__(self, level=0):
         ret = "*"*level+repr(self.type)+"\n"
         if self.right:
-            ret += '' + self.right.__str__(level+1)
+            ret += 'h' + self.right.__str__(level+1)
         return ret
         
 class AST_ExpressionAssignment(AST_Node):
@@ -168,10 +168,15 @@ class AST_IfFalse(AST_Node):
 class AST_WriteLn(AST_Node):
     def __init__(self, ast_type, connections):
         super().__init__(ast_type,connections)
+        
+class AST_FunctionCall(AST_Node):
+    def __init__(self, ast_type, connections):
+        super().__init__(ast_type,connections)
 
 class AST_Temp(AST_Node):
     def __init__(self):
         super().__init__('temp',[])
+        
 
 
 # pre_prossesing :: String -> String
