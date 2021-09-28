@@ -73,7 +73,7 @@ class Lexer():
                     print("ERROR: lacking closing for: "+str(data[0][0]))
                     return ([],[])
                 elif data[0][i] in end:
-                    data[1].append(return_function(data[0][0:i]))
+                    data[1].append(return_function(data[0][1:i]))
                     return (data[0][i+1:], data[1])
                 return _psb(i+1)
             return _psb(1)
