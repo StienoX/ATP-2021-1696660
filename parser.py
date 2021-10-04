@@ -327,7 +327,7 @@ class Parser():
             if not self.r_check(data_0, *(self.orders['op'])):    # (functioncall) ) or ;
                 head_node = _simple_insert_first_right(head_node,leaf_node_parent.connections[0])
                 if self.r_check(data_0, *(self.orders['close'])) or self.r_check(data[0], *(self.orders['semi'])):
-                    return (data_0[0][len(self.orders['close'][0]):],head_node)
+                    return (data_0[len(self.orders['close'][0]):],head_node)
                 return (data_0,head_node)
             else:
                 expr_node = ExprNode(data_0[0].data,self.get_precedence(data_0[0]))
