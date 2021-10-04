@@ -96,6 +96,9 @@ class Parser():
     
     # r_check :: [Token] -> [Token] -> [([Token] -> [Token] -> Bool)]
     def r_check(self, tokens: List[Token], expected_tokens: List[Token], checks: List[Callable[[[Token],[Token]], bool]]) -> bool:
+        if tokens and (not isinstance(tokens[0], Token)):
+            print(tokens)
+            assert()
         if not len(checks):
             return True
         elif len(tokens) and checks[0](tokens[0],expected_tokens[0]):
@@ -194,8 +197,6 @@ class Parser():
     # p_expression :: ([Token], AST_Node) -> ([Token], AST_Node)
     def p_expression(self, data: Tuple[List[Token],AST_Node]) -> Tuple[List[Token],AST_Node]: 
         if self.r_check(data[0], *(self.orders['exp'])) or self.r_check(data[0], *(self.orders['exp_2'])) or self.r_check(data[0], *(self.orders['exp_3'])) or (self.r_check(data[0], *(self.orders['func_call'])) and check_token_equal_name(self.parse_discard_until(data,Token('parentheses_closed'))[0][1],Token('operator'))) or self.r_check(data[0], *(self.orders['open'])):
-            print("Expression starting with: ")
-            print(data[0][0:7])
             ast_expression = AST_Expression('expression',[])
             data[1].append(ast_expression)
             return (self.p_fu_expression((data[0],ast_expression), ast_expression, False)[0],data[1])
@@ -273,22 +274,15 @@ class Parser():
             print(0)
             (data_0,data_1) = self.p_fu_expression((data[0][1:],data[1]), AST_Expression('expression',[]), True)
             data_1.right.precedence = 8
-            print("c0")
-            print(data_0,data_1)
             if self.r_check(data_0, *(self.orders['op'])):
-                print("c0_1")
-                print(data_1.right)
-                print("before")
-                print(head_node)
                 head_node = _insert(data_1.right,ExprNode(data_0[0].data,self.get_precedence(data_0[0])),head_node)
-                print("after")
-                print(head_node)
                 return self.p_fu_expression((data_0[1:],head_node),head_node, open)
             else:
                 # weird leaf)) stuff (need to get rid of the extra expression node created)
                 # might need more checks not sure
                 # returning data_0 with head_node for now
-                
+                if self.r_check(data_0, *(self.orders['close'])):
+                    return (data_0[1:],_simple_insert_first_right(head_node,data_1.right))
                 return (data_0,_simple_insert_first_right(head_node,data_1.right)) # removing the extra expression node
 
         elif self.r_check(data[0], *(self.orders['exp'])):    # variable
