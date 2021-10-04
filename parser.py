@@ -246,7 +246,7 @@ class Parser():
         if self.r_check(data[0], *(self.orders['else'])):
             if_false = AST_IfFalse('if_false',[])
             data[1].append(if_false)
-            return (self.parse_until_no_change((data[0][1:],data[1]), [self.p_if,self.p_var,self.p_writeLn,self.p_function_call,self.p_expression]),data[1])
+            return (self.parse_until_no_change((data[0][1:],data[1]), [self.p_if,self.p_var,self.p_writeLn,self.p_function_call,self.p_expression])[0],data[1])
         return data
 
     # p_fu_expression :: ([Token], AST_Node) -> ([Token], AST_Node)
@@ -278,11 +278,8 @@ class Parser():
                 head_node = _insert(data_1.right,ExprNode(data_0[0].data,self.get_precedence(data_0[0])),head_node)
                 return self.p_fu_expression((data_0[1:],head_node),head_node, open)
             else:
-                # weird leaf)) stuff (need to get rid of the extra expression node created)
-                # might need more checks not sure
-                # returning data_0 with head_node for now
                 if self.r_check(data_0, *(self.orders['close'])):
-                    return (data_0[1:],_simple_insert_first_right(head_node,data_1.right))
+                    return (data_0[1:],_simple_insert_first_right(head_node,data_1.right)) # removing the extra ) *this is only possible in nested situations
                 return (data_0,_simple_insert_first_right(head_node,data_1.right)) # removing the extra expression node
 
         elif self.r_check(data[0], *(self.orders['exp'])):    # variable
