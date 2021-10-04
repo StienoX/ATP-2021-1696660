@@ -35,7 +35,14 @@ class Token:
     
 # check_token_equal_name :: Token -> Token -> Bool
 def check_token_equal_name(token1: Token,token2: Token) -> bool:
-    return token1.name == token2.name
+    try: ## debugging can be removed
+        return token1.name == token2.name
+    except:
+        print("ERROR GOT AN INVALED TOKEN")
+        print(token1)
+        print(token2)
+        assert()
+        return False
 
 # check_token_equal_data :: Token -> Token -> Bool
 def check_token_equal_data(token1: Token,token2: Token) -> bool:
@@ -142,7 +149,7 @@ class AST_Expression(AST_Node):
         self.right = None
         
     def __str__(self, level=0):
-        ret = "*"*level+repr(self.type)+"\n"
+        ret = "-"*level+repr(self.type)+"\n"
         if self.right:
             ret += 'h' + self.right.__str__(level+1)
         return ret
@@ -198,7 +205,7 @@ class ExprNode(AST_Node):
     def __str__(self, level=0):
         if self.stop: ## debugging can be removed
             self.stop = False
-            return "+"*level+repr(self.type)+ ',' + repr(self.data)+"\n"
+            return "-"*level+repr(self.type)+ ',' + repr(self.data)+"\n"
         
         if self.repeat: ## debugging can be removed
             print("HEY WE HAVE A CIRCULAIR STUFF")
@@ -206,11 +213,11 @@ class ExprNode(AST_Node):
         
             
         self.repeat = True  ## debugging can be removed
-        ret = "*"*level+repr(self.type)+ ',' + repr(self.data)+"\n"
-        if self.right:
-            ret += 'r' + self.right.__str__(level+1)
+        ret = "-"*level+repr(self.type)+ ',' + repr(self.data)+"\n"
         if self.left:
             ret += 'l' + self.left.__str__(level+1)
+        if self.right:
+            ret += 'r' + self.right.__str__(level+1)
         self.repeat = False ## debugging can be removed
         return ret
         
@@ -232,6 +239,6 @@ class ExprLeaf(AST_Node):
         self.data = data
         
     def __str__(self, level=0):
-        return "*"*level+repr(self.type)+ ',' + repr(self.data)+"\n"
+        return "-"*level+repr(self.type)+ ',' + repr(self.data)+"\n"
     
     __repr__ = __str__
