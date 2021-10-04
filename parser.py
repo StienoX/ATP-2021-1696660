@@ -4,8 +4,8 @@ class Parser():
     def __init__(self):
         self.orders =           {'program' :    (   [Token('keyword','program')   ,Token('identifier')      ,Token('keyword',';')], 
                                                     [check_token_equal_all        ,check_token_equal_name   ,check_token_equal_all]),
-                                 'var_dec' :    (   [Token('keyword','var')       ,Token('identifier')      ,Token('operator',':')      , Token('type')             , Token('keyword',';')],
-                                                    [check_token_equal_all        ,check_token_equal_name   ,check_token_equal_all      , check_token_equal_name    , check_token_equal_all]),                                     
+                                 'var_dec' :    (   [Token('keyword','var')       ,Token('identifier')      ,Token('operator',':')      , Token('type')             ],
+                                                    [check_token_equal_all        ,check_token_equal_name   ,check_token_equal_all      , check_token_equal_name    ]),                                     
                                  'func' :       (   [Token('keyword', 'function') ,Token('identifier')      ,Token('parentheses_open')],
                                                     [check_token_equal_all        ,check_token_equal_name   ,check_token_equal_name ]),
                                  'func_close':  (   [Token('parentheses_closed')  ,Token('keyword',';')],
@@ -75,6 +75,8 @@ class Parser():
                                  'id':          (   [Token('identifier')],
                                                     [check_token_equal_name]),
                                  'else':        (   [Token('keyword','else')],
+                                                    [check_token_equal_all]),
+                                 'until':       (   [Token('keyword','until')],
                                                     [check_token_equal_all])
                                  
                                 }
@@ -124,7 +126,7 @@ class Parser():
     def p_program(self, tokens: List[Token]) -> Tuple[List[Token],AST_Node]:
         if self.r_check(tokens, *(self.orders['program'])):   
             return self.parse_until_no_change(((tokens[len(self.orders['program'][0]):]),AST_Program('program',[],tokens[1].name)), 
-                                              [self.p_function,self.p_if,self.p_var,self.p_writeLn,self.p_function_call,self.p_expression])
+                                              [self.p_repeat,self.p_function,self.p_if,self.p_var,self.p_writeLn,self.p_function_call,self.p_expression,self.p_semicolomn,self.p_begin])
         else:
             print("No program identifier")
         return None
@@ -146,7 +148,12 @@ class Parser():
         if self.r_check(data[0], *(self.orders['repeat'])):
             ast_repeat = AST_Repeat('repeat',[])
             data[1].append(ast_repeat)
-            return (self.parse_nothing(((data[0][len(self.orders['repeat'][0]):]),ast_repeat))[0],data[1])
+            new_data = (self.p_fu_repeat_block(((data[0][len(self.orders['repeat'][0]):]),ast_repeat))[0],data[1])
+            if self.r_check(new_data[0], *(self.orders['until'])):
+                new_data = self.p_expression((new_data[0][1:],new_data[1]))
+                return (new_data[0],data[1])
+            print("No Until statement found for repeat")
+            return new_data
         else:
             return data
     
@@ -161,10 +168,10 @@ class Parser():
     
     # p_var :: ([Token], AST_Node) -> ([Token], AST_Node)
     def p_var(self, data: Tuple[List[Token],AST_Node]) -> Tuple[List[Token],AST_Node]:
-        if self.r_check(data[0], *(self.orders['var'])):
-            ast_var = AST_Var('var',[],data[0][1].name)
+        if self.r_check(data[0], *(self.orders['var_dec'])):
+            ast_var = AST_Var('var',[],data[0][1].data,data[0][3].data)
             data[1].append(ast_var)
-            return (self.parse_nothing(((data[0][len(self.orders['var'][0]):]),ast_var))[0],data[1])
+            return (data[0][len(self.orders['var_dec'][0]):],data[1])
         else:
             return data
         
@@ -227,11 +234,11 @@ class Parser():
             # we have used the ) in the expression function
             print("We are missing the closing bracket")
             print(new_data)
-            return new_data
+            return new_data 
     
     # p_fu_begin :: ([Token], AST_Node) -> ([Token], AST_Node)
     def p_fu_begin(self, data: Tuple[List[Token],AST_Node]) -> Tuple[List[Token],AST_Node]:
-        return self.parse_until_no_change(data, [self.p_if,self.p_var,self.p_writeLn,self.p_function_call,self.p_expression])
+        return self.parse_until_no_change(data, [self.p_if,self.p_var,self.p_writeLn,self.p_function_call,self.p_expression,self.p_semicolomn])
     
     # p_fu_if :: ([Token], AST_Node) -> ([Token], AST_Node)
     def p_fu_if(self, data: Tuple[List[Token],AST_Node]) -> Tuple[List[Token],AST_Node]:
@@ -248,6 +255,9 @@ class Parser():
             data[1].append(if_false)
             return (self.parse_until_no_change((data[0][1:],data[1]), [self.p_if,self.p_var,self.p_writeLn,self.p_function_call,self.p_expression])[0],data[1])
         return data
+
+    def p_fu_repeat_block(self, data: Tuple[List[Token],AST_Node]) -> Tuple[List[Token],AST_Node]:
+        return self.p_semicolomn(self.parse_until_no_change((data[0],data[1]), [self.p_repeat,self.p_if,self.p_var,self.p_writeLn,self.p_function_call,self.p_expression]))
 
     # p_fu_expression :: ([Token], AST_Node) -> ([Token], AST_Node)
     def p_fu_expression(self, data: Tuple[List[Token],AST_Node], head_node: AST_Expression, open: bool) -> Tuple[List[Token],AST_Node]: 
@@ -271,7 +281,6 @@ class Parser():
             return head_node # still returning the head node since the whole tree is modified
         
         if   self.r_check(data[0], *(self.orders['open'])):   # ( )
-            print(0)
             (data_0,data_1) = self.p_fu_expression((data[0][1:],data[1]), AST_Expression('expression',[]), True)
             data_1.right.precedence = 8
             if self.r_check(data_0, *(self.orders['op'])):
@@ -283,37 +292,30 @@ class Parser():
                 return (data_0,_simple_insert_first_right(head_node,data_1.right)) # removing the extra expression node
 
         elif self.r_check(data[0], *(self.orders['exp'])):    # variable
-            print(1)
             head_node = _insert(ExprLeaf('var',data[0][0].data),ExprNode(data[0][1].data,self.get_precedence(data[0][1])),head_node)
             return self.p_fu_expression((data[0][len(self.orders['exp'][0]):],head_node),head_node,open)
         
         elif self.r_check(data[0], *(self.orders['exp_2'])):  # digit
-            print(2)
             head_node = _insert(ExprLeaf('digit',data[0][0].data),ExprNode(data[0][1].data,self.get_precedence(data[0][1])),head_node)
             return self.p_fu_expression((data[0][len(self.orders['exp_2'][0]):],head_node),head_node,open)
         
         elif self.r_check(data[0], *(self.orders['exp_3'])):  # string
-            print(3)
             head_node = _insert(ExprLeaf('string',data[0][0].data),ExprNode(data[0][1].data,self.get_precedence(data[0][1])),head_node)
             return self.p_fu_expression((data[0][len(self.orders['exp_3'][0]):],head_node),head_node,open)
         
         elif (open and self.r_check(data[0], *(self.orders['exp_c']))) or self.r_check(data[0], *(self.orders['exp_s'])):  # var )
-            print(4)
             head_node = _simple_insert_first_right(head_node,ExprLeaf('var',data[0][0].data))
             return (data[0][len(self.orders['exp_c'][0]):],head_node)
 
         elif (open and self.r_check(data[0], *(self.orders['exp_2c']))) or self.r_check(data[0], *(self.orders['exp_2s'])): # digit ) or ;
-            print(5)
             head_node = _simple_insert_first_right(head_node,ExprLeaf('digit',data[0][0].data))
             return (data[0][len(self.orders['exp_2c'][0]):],head_node)
         
         elif (open and self.r_check(data[0], *(self.orders['exp_3c']))) or self.r_check(data[0], *(self.orders['exp_3s'])): # string )
-            print(6)
             head_node = _simple_insert_first_right(head_node,ExprLeaf('string',data[0][0].data))
             return (data[0][len(self.orders['exp_3c'][0]):],head_node)
         
         elif self.r_check(data[0], *(self.orders['func_call'])):  # functioncall
-            print(7)
             (data_0 ,leaf_node_parent) = self.p_function_call((data[0],AST_Temp()))
             if not self.r_check(data_0, *(self.orders['op'])):    # (functioncall) ) or ;
                 head_node = _simple_insert_first_right(head_node,leaf_node_parent.connections[0])
@@ -328,17 +330,14 @@ class Parser():
         
         # no closing ')' or ';'
         elif self.r_check(data[0], *(self.orders['digit'])): # digit
-            print(8)
             head_node = _simple_insert_first_right(head_node,ExprLeaf('digit',data[0][0].data))
             return (data[0][len(self.orders['digit'][0]):],head_node)
         
         elif self.r_check(data[0], *(self.orders['str'])): # string 
-            print(9)
             head_node = _simple_insert_first_right(head_node,ExprLeaf('string',data[0][0].data))
             return (data[0][len(self.orders['str'][0]):],head_node)
         
         elif self.r_check(data[0], *(self.orders['var'])):  # var
-            print(10)
             head_node = _simple_insert_first_right(head_node,ExprLeaf('var',data[0][0].data))
             return (data[0][len(self.orders['var'][0]):],head_node)
         
@@ -377,21 +376,18 @@ class Parser():
     # p_function_first_param :: ([Token],AST_Node) -> ([Token], AST_Node)
     def p_function_call_first_param(self, data: Tuple[List[Token],AST_Node]) -> Tuple[List[Token],AST_Node]:
         if self.r_check(data[0], *(self.orders['func_call'])):
+            #somewhere here is a bug
             new_data = self.p_fu_function_call(data)
             if check_token_equal_name(new_data[0][0], Token('operator')):
                 new_data = self.p_expression((data[0],AST_Parameter('list',[],'expression','expression')))
                 data[1].append[new_data[1]]
                 return (new_data[0],data[1])
-            ast_param = AST_Parameter('list',[new_data[1]], "functioncall", "functioncall")
+            ast_param = AST_Parameter('list',[new_data[1]], "func_call", "func_call")
             data[1].append(ast_param)
             return ((data[0][len(self.orders['f_list'][0]):]),data[1])
         
-        
         if len(data[0]) >= 2 and ((check_token_equal_name(data[0][0], Token('parentheses_open')) or (check_token_equal_name(data[0][1], Token('operator'))))):
-            print("YES")
             new_data = self.p_expression((data[0],AST_Parameter('list',[],'expression','expression')))
-            print(data)
-            print(new_data)
             data[1].append(new_data[1])
             return (new_data[0],data[1])
         

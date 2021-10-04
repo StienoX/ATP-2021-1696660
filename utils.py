@@ -52,6 +52,7 @@ def check_token_equal_data(token1: Token,token2: Token) -> bool:
         print("ERROR GOT AN INVALED TOKEN")
         print(token1)
         print(token2)
+        assert()
         return False
 
 # check_token_equal_all :: Token -> Token -> Bool
