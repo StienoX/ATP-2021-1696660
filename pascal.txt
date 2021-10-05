@@ -8,7 +8,6 @@ end;
 function fib(x:integer):integer;
 begin
   if (x = 0 or x = 1) then
-    WriteLn("JOEPIE")
     fib:=1
   else
     fib:=fib(x - 2) + fib(x - 1);
@@ -25,7 +24,8 @@ repeat
     a := a + 1
 until a = 10;
 
-begin { main program }
+begin
     i := 21;
-    Print(fib(i));
+    fib_rslt := fib(i)
+    Print(fib_rslt);
 end.

@@ -76,24 +76,26 @@ class Parser():
                                                     [check_token_equal_name]),
                                  'else':        (   [Token('keyword','else')],
                                                     [check_token_equal_all]),
+                                 'eof':         (   [Token('eof','.')],
+                                                    [check_token_equal_all]),
                                  'until':       (   [Token('keyword','until')],
                                                     [check_token_equal_all])
                                  
                                 }
-        self.precedence_order = [(Token('operator','<='),1),
-                                 (Token('operator','>='),1),
-                                 (Token('operator','='),1), 
+        self.precedence_order = [(Token('operator','<='),2),
+                                 (Token('operator','>='),2),
+                                 (Token('operator','='),2), 
                                  (Token('operator',':='),0), 
                                  (Token('operator','::='),0), 
-                                 (Token('operator',':'),1), 
-                                 (Token('operator','<'),1), 
-                                 (Token('operator','>'),1), 
-                                 (Token('operator','+'),2), 
-                                 (Token('operator','-'),2), 
-                                 (Token('operator','*'),3), 
-                                 (Token('operator','/'),3),
-                                 (Token('operator','or'),0),
-                                 (Token('operator','and'),0),
+                                 (Token('operator',':'),2), 
+                                 (Token('operator','<'),2), 
+                                 (Token('operator','>'),2), 
+                                 (Token('operator','+'),3), 
+                                 (Token('operator','-'),3), 
+                                 (Token('operator','*'),4), 
+                                 (Token('operator','/'),4),
+                                 (Token('operator','or'),1),
+                                 (Token('operator','and'),1),
                                  ]
     
     # r_check :: [Token] -> [Token] -> [([Token] -> [Token] -> Bool)]
@@ -125,8 +127,8 @@ class Parser():
     # p_program :: [Token] -> AST_Node
     def p_program(self, tokens: List[Token]) -> Tuple[List[Token],AST_Node]:
         if self.r_check(tokens, *(self.orders['program'])):   
-            return self.parse_until_no_change(((tokens[len(self.orders['program'][0]):]),AST_Program('program',[],tokens[1].name)), 
-                                              [self.p_repeat,self.p_function,self.p_if,self.p_var,self.p_writeLn,self.p_function_call,self.p_expression,self.p_semicolomn,self.p_begin])
+            return self.p_eof(self.parse_until_no_change(((tokens[len(self.orders['program'][0]):]),AST_Program('program',[],tokens[1].name)), 
+                                              [self.p_repeat,self.p_function,self.p_if,self.p_var,self.p_writeLn,self.p_function_call,self.p_expression,self.p_semicolomn,self.p_begin]))
         else:
             print("No program identifier")
         return None
@@ -187,10 +189,14 @@ class Parser():
     # p_function_call :: ([Token], AST_Node) -> ([Token], AST_Node)
     def p_function_call(self, data: Tuple[List[Token],AST_Node]) -> Tuple[List[Token],AST_Node]:  
         if self.r_check(data[0], *(self.orders['func_call'])):
+            new_data = self.parse_discard_until_recusive(data,Token('parentheses_closed'),Token('parentheses_open'),1)
+            if self.r_check(new_data[0],[Token('operator')],[check_token_equal_name]):
+                return self.p_expression(data)
             function_call = AST_FunctionCall('func_call', [])
             data[1].append(function_call)
-            return (self.p_fu_function_call(((data[0][len(self.orders['func_call'][0]):]),function_call))[0],data[1])
-            
+            if self.r_check(data[2:], *(self.orders['close'])):
+                return (data[0][2:],data[1])
+            return (self.p_fu_function_call(((data[0][len(self.orders['func_call'][0]):]),function_call))[0],data[1])   
         return data
     
     # p_writeLn :: ([Token], AST_Node) -> ([Token], AST_Node)
@@ -317,6 +323,8 @@ class Parser():
         
         elif self.r_check(data[0], *(self.orders['func_call'])):  # functioncall
             (data_0 ,leaf_node_parent) = self.p_function_call((data[0],AST_Temp()))
+            if self.r_check(data_0, *(self.orders['close'])):
+                return (data_0[1:], head_node)
             if not self.r_check(data_0, *(self.orders['op'])):    # (functioncall) ) or ;
                 head_node = _simple_insert_first_right(head_node,leaf_node_parent.connections[0])
                 if self.r_check(data_0, *(self.orders['close'])) or self.r_check(data[0], *(self.orders['semi'])):
@@ -340,7 +348,6 @@ class Parser():
         elif self.r_check(data[0], *(self.orders['var'])):  # var
             head_node = _simple_insert_first_right(head_node,ExprLeaf('var',data[0][0].data))
             return (data[0][len(self.orders['var'][0]):],head_node)
-        
         
         else:
             print("ERROR PARSER FAILED PARSING THIS EXPRESSION")
@@ -375,16 +382,8 @@ class Parser():
     
     # p_function_first_param :: ([Token],AST_Node) -> ([Token], AST_Node)
     def p_function_call_first_param(self, data: Tuple[List[Token],AST_Node]) -> Tuple[List[Token],AST_Node]:
-        if self.r_check(data[0], *(self.orders['func_call'])):
-            #somewhere here is a bug
-            new_data = self.p_fu_function_call(data)
-            if check_token_equal_name(new_data[0][0], Token('operator')):
-                new_data = self.p_expression((data[0],AST_Parameter('list',[],'expression','expression')))
-                data[1].append[new_data[1]]
-                return (new_data[0],data[1])
-            ast_param = AST_Parameter('list',[new_data[1]], "func_call", "func_call")
-            data[1].append(ast_param)
-            return ((data[0][len(self.orders['f_list'][0]):]),data[1])
+        if self.r_check(data[0], *(self.orders['close'])):
+            return data
         
         if len(data[0]) >= 2 and ((check_token_equal_name(data[0][0], Token('parentheses_open')) or (check_token_equal_name(data[0][1], Token('operator'))))):
             new_data = self.p_expression((data[0],AST_Parameter('list',[],'expression','expression')))
@@ -422,6 +421,11 @@ class Parser():
             return ((data[0][len(self.orders['end'][0]):]),data[1])
         return data
     
+    def p_eof(self, data: Tuple[List[Token],AST_Node]) -> Tuple[List[Token],AST_Node]:
+        if self.r_check(data[0], *(self.orders['eof'])):
+            return ((data[0][len(self.orders['eof'][0]):]),data[1])
+        return data
+    
     # p_function_def_closing_ret :: ([Token],AST_Node) -> ([Token], AST_Node)
     def p_function_def_closing_ret(self, data: Tuple[List[Token],AST_Node]) -> Tuple[List[Token],AST_Node]:
         if self.r_check(data[0], *(self.orders['func_ret'])):
@@ -455,6 +459,17 @@ class Parser():
             return new_data
         return self.parse_in_order_stop_at_succes(data,parsers[1:])
 
+    def parse_discard_until_recusive(self, data: Tuple[List[Token],AST_Node], token_stop: Token, token_start: Token, i: int) -> Tuple[List[Token],AST_Node]:
+        if not len(data[0]):
+            return data
+        if data[0][0] == token_stop:
+            if i - 1:
+                return self.parse_discard_until_recusive((data[0][1:],data[1]),token_stop,token_start,i-1) 
+            return data
+        if data[0][0] == token_start:
+            return self.parse_discard_until_recusive((data[0][1:],data[1]),token_stop,token_start,i+1) 
+        else:
+            return self.parse_discard_until_recusive((data[0][1:],data[1]),token_stop,token_start,i) 
 
     ## WRAPPERS ##
     
