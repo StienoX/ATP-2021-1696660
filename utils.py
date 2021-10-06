@@ -128,8 +128,8 @@ class AST_FunctionReturnType(AST_Node):
 class AST_Var(AST_Node):
     def __init__(self, ast_type, connections, var_name, var_type):
         super().__init__(ast_type,connections)
-        self.procedure_name = var_name
-        self.return_type = var_type
+        self.var_name = var_name
+        self.var_type = var_type
         
 class AST_Block(AST_Node):
     def __init__(self, ast_type, connections):
@@ -176,7 +176,11 @@ class AST_IfFalse(AST_Node):
 class AST_WriteLn(AST_Node):
     def __init__(self, ast_type, connections):
         super().__init__(ast_type,connections)
-        
+
+class AST_ReadLn(AST_Node):
+    def __init__(self, ast_type, connections):
+        super().__init__(ast_type,connections)   
+
 class AST_FunctionCall(AST_Node):
     def __init__(self, ast_type, connections):
         super().__init__(ast_type,connections)

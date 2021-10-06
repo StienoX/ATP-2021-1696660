@@ -28,6 +28,8 @@ class Parser():
                                                     [check_token_equal_name       ,check_token_equal_name]),
                                  'writeLn':     (   [Token('keyword','WriteLn')   ,Token('parentheses_open')],
                                                     [check_token_equal_all        ,check_token_equal_name]),
+                                 'readLn':      (   [Token('keyword','ReadLn')    ,Token('parentheses_open') ,Token('parentheses_closed')],
+                                                    [check_token_equal_all        ,check_token_equal_name    ,check_token_equal_name]),
                                  'close':       (   [Token('parentheses_closed')],
                                                     [check_token_equal_name]),
                                  'close_op':    (   [Token('parentheses_closed'), Token('operator')],
@@ -128,7 +130,7 @@ class Parser():
     def p_program(self, tokens: List[Token]) -> Tuple[List[Token],AST_Node]:
         if self.r_check(tokens, *(self.orders['program'])):   
             return self.p_eof(self.parse_until_no_change(((tokens[len(self.orders['program'][0]):]),AST_Program('program',[],tokens[1].name)), 
-                                              [self.p_repeat,self.p_function,self.p_if,self.p_var,self.p_writeLn,self.p_function_call,self.p_expression,self.p_semicolomn,self.p_begin]))
+                                              [self.p_repeat,self.p_function,self.p_if,self.p_var,self.p_writeLn,self.p_readLn,self.p_function_call,self.p_expression,self.p_semicolomn,self.p_begin]))
         else:
             print("No program identifier")
         return None
@@ -139,7 +141,7 @@ class Parser():
     # p_function :: ([Token], AST_Node) -> ([Token], AST_Node)
     def p_function(self, data: Tuple[List[Token],AST_Node]) -> Tuple[List[Token],AST_Node]:
         if self.r_check(data[0], *(self.orders['func'])):
-            ast_function = AST_Function('function',[],data[0][1].name)
+            ast_function = AST_Function('function',[],data[0][1].data)
             data[1].append(ast_function)
             return (self.p_fu_function(((data[0][len(self.orders['func'][0]):]),ast_function))[0],data[1])
         else:
@@ -207,6 +209,14 @@ class Parser():
             return (self.p_fu_function_call(((data[0][len(self.orders['writeLn'][0]):]),ast_writeLn))[0],data[1])    
         return data
     
+    # p_readLn :: ([Token], AST_Node) -> ([Token], AST_Node)
+    def p_readLn(self, data: Tuple[List[Token],AST_Node]) -> Tuple[List[Token],AST_Node]: 
+        if self.r_check(data[0], *(self.orders['readLn'])):
+            ast_readLn = AST_ReadLn('readLn', [])
+            data[1].append(ast_readLn)
+            return (data[0][len(self.orders['readLn'][0]):],data[1])
+        return data
+    
     # p_expression :: ([Token], AST_Node) -> ([Token], AST_Node)
     def p_expression(self, data: Tuple[List[Token],AST_Node]) -> Tuple[List[Token],AST_Node]: 
         if self.r_check(data[0], *(self.orders['exp'])) or self.r_check(data[0], *(self.orders['exp_2'])) or self.r_check(data[0], *(self.orders['exp_3'])) or (self.r_check(data[0], *(self.orders['func_call'])) and check_token_equal_name(self.parse_discard_until(data,Token('parentheses_closed'))[0][1],Token('operator'))) or self.r_check(data[0], *(self.orders['open'])):
@@ -244,7 +254,7 @@ class Parser():
     
     # p_fu_begin :: ([Token], AST_Node) -> ([Token], AST_Node)
     def p_fu_begin(self, data: Tuple[List[Token],AST_Node]) -> Tuple[List[Token],AST_Node]:
-        return self.parse_until_no_change(data, [self.p_if,self.p_var,self.p_writeLn,self.p_function_call,self.p_expression,self.p_semicolomn])
+        return self.parse_until_no_change(data, [self.p_if,self.p_var,self.p_writeLn,self.p_readLn,self.p_function_call,self.p_expression,self.p_semicolomn])
     
     # p_fu_if :: ([Token], AST_Node) -> ([Token], AST_Node)
     def p_fu_if(self, data: Tuple[List[Token],AST_Node]) -> Tuple[List[Token],AST_Node]:
@@ -252,18 +262,18 @@ class Parser():
     
     def p_fu_if_block(self, data: Tuple[List[Token],AST_Node]) -> Tuple[List[Token],AST_Node]:
         if self.r_check(data[0],*(self.orders['then'])):
-            return self.p_semicolomn(self.p_fu_if_else(self.parse_until_no_change((data[0][1:],data[1]), [self.p_if,self.p_var,self.p_writeLn,self.p_function_call,self.p_expression])))
+            return self.p_semicolomn(self.p_fu_if_else(self.parse_until_no_change((data[0][1:],data[1]), [self.p_if,self.p_var,self.p_writeLn,self.p_readLn,self.p_function_call,self.p_expression])))
         return data
     
     def p_fu_if_else(self, data: Tuple[List[Token],AST_Node]) -> Tuple[List[Token],AST_Node]: 
         if self.r_check(data[0], *(self.orders['else'])):
             if_false = AST_IfFalse('if_false',[])
             data[1].append(if_false)
-            return (self.parse_until_no_change((data[0][1:],data[1]), [self.p_if,self.p_var,self.p_writeLn,self.p_function_call,self.p_expression])[0],data[1])
+            return (self.parse_until_no_change((data[0][1:],data[1]), [self.p_if,self.p_var,self.p_writeLn,self.p_readLn,self.p_function_call,self.p_expression])[0],data[1])
         return data
 
     def p_fu_repeat_block(self, data: Tuple[List[Token],AST_Node]) -> Tuple[List[Token],AST_Node]:
-        return self.p_semicolomn(self.parse_until_no_change((data[0],data[1]), [self.p_repeat,self.p_if,self.p_var,self.p_writeLn,self.p_function_call,self.p_expression]))
+        return self.p_semicolomn(self.parse_until_no_change((data[0],data[1]), [self.p_repeat,self.p_if,self.p_var,self.p_writeLn,self.p_readLn,self.p_function_call,self.p_expression]))
 
     # p_fu_expression :: ([Token], AST_Node) -> ([Token], AST_Node)
     def p_fu_expression(self, data: Tuple[List[Token],AST_Node], head_node: AST_Expression, open: bool) -> Tuple[List[Token],AST_Node]: 
@@ -321,8 +331,11 @@ class Parser():
             head_node = _simple_insert_first_right(head_node,ExprLeaf('string',data[0][0].data))
             return (data[0][len(self.orders['exp_3c'][0]):],head_node)
         
-        elif self.r_check(data[0], *(self.orders['func_call'])):  # functioncall
-            (data_0 ,leaf_node_parent) = self.p_function_call((data[0],AST_Temp()))
+        elif self.r_check(data[0], *(self.orders['func_call'])) or self.r_check(data[0], *(self.orders['readLn'])):  # functioncall
+            if self.r_check(data[0], *(self.orders['func_call'])):
+                (data_0 ,leaf_node_parent) = self.p_function_call((data[0],AST_Temp()))
+            else:
+                (data_0 ,leaf_node_parent) = self.p_readLn((data[0],AST_Temp()))
             if self.r_check(data_0, *(self.orders['close'])):
                 return (data_0[1:], head_node)
             if not self.r_check(data_0, *(self.orders['op'])):    # (functioncall) ) or ;
@@ -475,7 +488,7 @@ class Parser():
     
     # run :: [Token] -> AST_Node
     def run(self, tokens):
-        return self.p_program(tokens)
+        return self.p_program(tokens)[1]
     
     
     ## DEBUG PARSERS ##

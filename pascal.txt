@@ -1,10 +1,5 @@
 program Printing;
 
-function Print(j : integer);
-begin
-    WriteLn('j:',j )
-end;
-
 function fib(x:integer):integer;
 begin
   if (x = 0 or x = 1) then
@@ -18,7 +13,9 @@ begin
     WriteLn('j:',j)
 end;
 
-var i : integer;
+var a : integer;
+
+a := ReadLn();
 
 repeat
     a := a + 1
@@ -26,6 +23,6 @@ until a = 10;
 
 begin
     i := 21;
-    fib_rslt := fib(i)
+    fib_rslt := fib(i);
     Print(fib_rslt);
 end.

@@ -25,7 +25,7 @@ from utils import *
 class Lexer():
     def __init__(self):
         self.types =            ['integer', 'real', 'char', 'boolean', 'string']
-        self.keywords =         ['var', 'repeat', 'while', 'do', 'until', 'WriteLn', 'begin', 'end', 'function', ',', ';', 'program', 'if', 'then', 'else']
+        self.keywords =         ['var', 'repeat', 'while', 'do', 'until', 'WriteLn', 'begin', 'end', 'function', ',', ';', 'program', 'if', 'then', 'else', 'ReadLn']
         self.operators =        ['<=','>=','=', ':=', '::=', ':', '<', '>', '+', '-', '*', '/', 'or', 'and']
         self.brackets =         ['[',']']
         self.curly_bracket =    ['{','}']
