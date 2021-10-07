@@ -1,19 +1,5 @@
 program Printing;
 
-function Print(j : integer);
-begin
-    WriteLn('Your number was:',j)
-end;
-
-begin
-    var input_data : string;
-    WriteLn('please write a number down:')
-    input_data := ReadLn();
-    Print(input_data);
-end.
-
-
-
 function fib(x:integer):integer;
 begin
   if (x = 0 or x = 1) then
@@ -24,11 +10,12 @@ end;
 
 function Print(j : integer);
 begin
-    WriteLn('j:',j)
+    WriteLn('Your number was:',j)
 end;
 
 begin
-    i := 21;
-    fib_rslt := fib(i);
-    Print(fib_rslt);
+    var input_data : integer;
+    WriteLn('please write a number down:')
+    input_data := ReadLn();
+    Print(input_data);
 end.

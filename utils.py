@@ -190,6 +190,10 @@ class AST_Temp(AST_Node):
     def __init__(self):
         super().__init__('temp',[])
         
+class AST_EndFunctionCall(AST_Node):
+    def __init__(self):
+        super().__init__('EFC',[])
+        
 
 
 # pre_prossesing :: String -> String
