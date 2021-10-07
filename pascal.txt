@@ -2,11 +2,14 @@ program Printing;
 
 function Print(j : integer);
 begin
-    WriteLn('j:',j)
+    WriteLn('Your number was:',j)
 end;
 
 begin
-    Print(5);
+    var input_data : string;
+    WriteLn('please write a number down:')
+    input_data := ReadLn();
+    Print(input_data);
 end.
 
 

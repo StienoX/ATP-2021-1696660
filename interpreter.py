@@ -46,6 +46,8 @@ class Functions:
     __repr__ = __str__
 
 
+## all internal used variables start with .
+
 class Interpreter:
     def __init__(self, ast):
         self.functions = Functions() # wrapper around a dict
@@ -54,8 +56,6 @@ class Interpreter:
         (globals, self.ast) = self.get_globals(self.ast)
         self.globals = dict(list(map(lambda _global: (_global.var_name, (_global.var_type, None)),globals)))
         self.variables = [{}]
-        
-    
     
     def get_functions(self, asts:List[AST_Node]):
         return split_list_if(asts, lambda x: isinstance(x, AST_Function))
@@ -63,15 +63,16 @@ class Interpreter:
     def get_globals(self, asts:List[AST_Node]):
         return split_list_if(asts, lambda x: isinstance(x, AST_Var))
         
-    def readln():
+    def readln(self):
         input_data = input()
         if input_data.isdigit():
-            return Var('return','int',int(input_data))
+            return Var('.current','int',int(input_data))
         else:
-            return Var('return','str',str(input_data))
+            return Var('.current','str',str(input_data))
                 
     def run(self):
         if self.ast:
+            print(self.ast)
             if isinstance(self.ast[0], AST_Begin):
                 self.ast.extend(self.ast[0].connections)
                 self.ast = self.ast[1:]
@@ -115,9 +116,16 @@ class Interpreter:
             elif isinstance(self.ast[0], AST_WriteLn):
                 print(functools.reduce((lambda rslt, param_print: (rslt + ((str(param_print.value)) if param_print._type != 'identifier' else str(get_var(param_print.value,self.variables[-1],self.globals)[1])))),self.ast[0].connections, ""))
                 self.ast = self.ast[1:]
+                self.variables[-1] = set_var(Var('.return','integer',None),self.variables[-1]) # sets return value to None
                 return self.run()
-            if isinstance(self.ast[0], AST_ReadLn):
-                return None
+            elif isinstance(self.ast[0], AST_ReadLn):
+                self.ast = self.ast[1:]
+                self.variables[-1] = set_var(self.readln(),self.variables[-1])
+                return self.run()
+            elif isinstance(self.ast[0], AST_Var):
+                self.variables[-1] = set_var(Var('.return','integer',None),self.variables[-1],) # sets return value to None
+                self.variables[-1] = set_var(Var(self.ast[0].var_name,self.ast[0].var_type,None),self.variables[-1]) # Made a variable with no value yet
+                self.ast = self.ast[1:]
                 return self.run()
             
                 
