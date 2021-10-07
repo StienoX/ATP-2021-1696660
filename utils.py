@@ -209,26 +209,13 @@ class ExprNode(AST_Node):
         self.precedence = precedence
         self.left: Union[None, ExprNode, ExprLeaf] = None
         self.right: Union[None, ExprNode, ExprLeaf] = None
-        self.repeat = False ## debugging can be removed
-        self.stop = False   ## debugging can be removed
 
     def __str__(self, level=0):
-        if self.stop: ## debugging can be removed
-            self.stop = False
-            return "-"*level+repr(self.type)+ ',' + repr(self.data)+"\n"
-        
-        if self.repeat: ## debugging can be removed
-            print("HEY WE HAVE A CIRCULAIR STUFF")
-            self.stop = True
-        
-            
-        self.repeat = True  ## debugging can be removed
         ret = "-"*level+repr(self.type)+ ',' + repr(self.data)+"\n"
         if self.left:
             ret += 'l' + self.left.__str__(level+1)
         if self.right:
             ret += 'r' + self.right.__str__(level+1)
-        self.repeat = False ## debugging can be removed
         return ret
         
     def __eq__(self, other):

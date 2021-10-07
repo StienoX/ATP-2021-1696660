@@ -13,6 +13,15 @@ begin
     WriteLn('Your number was:',j)
 end;
 
+function fib(x:integer):integer;
+begin
+  if (x = 0 or x = 1) then
+    fib:=1
+  else
+    fib:=fib(x - 2) + fib(x - 1);
+end;
+
+
 begin
     var input_data : integer;
     WriteLn('please write a number down:')

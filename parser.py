@@ -436,6 +436,7 @@ class Parser():
             return ((data[0][len(self.orders['end'][0]):]),data[1])
         return data
     
+    # p_eof :: ([Token],AST_Node) -> ([Token], AST_Node)
     def p_eof(self, data: Tuple[List[Token],AST_Node]) -> Tuple[List[Token],AST_Node]:
         if self.r_check(data[0], *(self.orders['eof'])):
             return ((data[0][len(self.orders['eof'][0]):]),data[1])

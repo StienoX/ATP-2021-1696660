@@ -4,8 +4,8 @@ class Var:
     def __init__(self, var_name, var_type, value):
         self.var_name = var_name
         self.type = var_type
-        self.value = value
-        
+        self.value: Union[int,str] = value
+    
     def __str__(self):
         return str(self.value)
     
@@ -51,64 +51,71 @@ class Interpreter:
     def readln(self):
         input_data = input()
         if input_data.isdigit():
-            return Var('.return','int',int(input_data))
+            return int(input_data)
         else:
-            return Var('.return','str',str(input_data))
+            return str(input_data)
     def run(self):
         return self.runner(self.ast)
     def runner(self, ast):
+        def evaluate_expression(node: Union[ExprLeaf,ExprNode,AST_FunctionCall,AST_ReadLn]) -> Union[None,int,str]:
+            ## LEAF
+            
+            if isinstance(node, ExprLeaf):
+                if node.type == 'var':
+                    return get_var(node.data,self.variables[-1],self.globals)[1]
+                else:    
+                    return node.data
+            
+            ## Function call (leaf)
+            if isinstance(node, AST_FunctionCall):
+                (function_ast,self.variables) = self.function_call(node._function,[node],self.variables)
+                (self.variables, self.globals) = self.runner(function_ast)
+                return get_var('.return',self.variables[-1],self.globals)[1]
+            
+            ## ReadLn call (leaf)
+            if isinstance(node, AST_ReadLn):
+                return self.readln()
+            
+            ## OPERATORS
+            if node.data == '+':
+                return evaluate_expression(node.left) + evaluate_expression(node.right)
+            if node.data == '-':
+                return evaluate_expression(node.left) - evaluate_expression(node.right)
+            if node.data == ':=':
+                data = (get_var(node.left.data,self.variables[-1],self.globals)[0],evaluate_expression(node.right))
+                self.variables[-1] = set_var(Var(node.left.data,*data),self.variables[-1])
+                self.variables[-1] = set_var(Var('.return',*data),self.variables[-1]) # also setting the return value if because this assignment could be the last call of the function call
+                return None # no need to set the .return again so we return None
+            if node.data == '*':
+                return evaluate_expression(node.left) * evaluate_expression(node.right)
+            if node.data == '/':
+                return evaluate_expression(node.left) / evaluate_expression(node.right)
+            if node.data == 'or':
+                return bool(evaluate_expression(node.left)) or bool(evaluate_expression(node.right))
+            if node.data == 'and':
+                return bool(evaluate_expression(node.left)) and bool(evaluate_expression(node.right))
+            if node.data == '=':
+                return evaluate_expression(node.left) == evaluate_expression(node.right)
+            if node.data == '<':
+                return evaluate_expression(node.left) < evaluate_expression(node.right)
+            if node.data == '>':
+                return evaluate_expression(node.left) > evaluate_expression(node.right)
+            if node.data == '>=':
+                return evaluate_expression(node.left) >= evaluate_expression(node.right)
+            if node.data == '<=':
+                return evaluate_expression(node.left) <= evaluate_expression(node.right)
+        #print(ast) ## DEBUG
         if ast:
             if isinstance(ast[0], AST_Begin):
                 ast = ast[0].connections + ast[1:]
                 return self.runner(ast)
             elif isinstance(ast[0], AST_Expression):
-                if ast[0].right:
-                    def evaluate_expression(node):
-                        ## LEAF
-                        if isinstance(node, ExprLeaf):
-                            return node.data
-                        
-                        ## Function call (leaf)
-                        if isinstance(node, AST_FunctionCall):
-                            (_,self.variables) = self.function_call(node._function,[node],self.variables)
-                            return get_var('.return',self.variables,self.globals)[1]
-                        
-                        ## ReadLn call (leaf)
-                        if isinstance(node, AST_ReadLn):
-                            return self.readln()
-                        
-                        ## OPERATORS
-                        if node.data == '+':
-                            return evaluate_expression(node.left) + evaluate_expression(node.right)
-                        if node.data == '-':
-                            return evaluate_expression(node.left) - evaluate_expression(node.right)
-                        if node.data == ':=':
-                            self.variables[-1] = set_var(Var(node.left.data,get_var(node.left.data,self.variables[-1],self.globals)[0],evaluate_expression(node.right)),self.variables[-1])
-                            return None
-                        if node.data == '*':
-                            return evaluate_expression(node.left) * evaluate_expression(node.right)
-                        if node.data == '/':
-                            return evaluate_expression(node.left) / evaluate_expression(node.right)
-                        if node.data == 'or':
-                            return bool(evaluate_expression(node.left)) or bool(evaluate_expression(node.right))
-                        if node.data == 'and':
-                            return bool(evaluate_expression(node.left)) and bool(evaluate_expression(node.right))
-                        if node.data == '=':
-                            return evaluate_expression(node.left) == evaluate_expression(node.right)
-                        if node.data == '<':
-                            return evaluate_expression(node.left) < evaluate_expression(node.right)
-                        if node.data == '>':
-                            return evaluate_expression(node.left) > evaluate_expression(node.right)
-                        if node.data == '>=':
-                            return evaluate_expression(node.left) >= evaluate_expression(node.right)
-                        if node.data == '<=':
-                            return evaluate_expression(node.left) <= evaluate_expression(node.right)
-                        
+                if ast[0].right:  
                     eval = evaluate_expression(ast[0].right)
                     if isinstance(eval,int):
-                        self.variables[-1] = set_var(Var('.return','integer',eval),self.variables[-1],) # sets return value to the evaluated value and returns it as int
+                        self.variables[-1] = set_var(Var('.return','integer',eval),self.variables[-1]) # sets return value to the evaluated value and returns it as int
                     if isinstance(eval,str):
-                        self.variables[-1] = set_var(Var('.return','string',eval),self.variables[-1],) # sets return value to the evaluated value and returns it as string
+                        self.variables[-1] = set_var(Var('.return','string',eval),self.variables[-1]) # sets return value to the evaluated value and returns it as string
                     ast = ast[1:]
                     return self.runner(ast)
                 else:
@@ -130,21 +137,24 @@ class Interpreter:
                 self.variables[-1] = set_var(Var(ast[0].var_name,ast[0].var_type,None),self.variables[-1]) # Made a variable with no value yet
                 ast = ast[1:]
                 return self.runner(ast)
-            elif isinstance(ast[0], AST_Var):
-                self.variables[-1] = set_var(Var('.return','integer',None),self.variables[-1],) # sets return value to None
-                self.variables[-1] = set_var(Var(ast[0].var_name,ast[0].var_type,None),self.variables[-1]) # Made a variable with no value yet
-                ast = ast[1:]
-                return self.runner(ast)
             elif isinstance(ast[0], AST_EndFunctionCall):
                 ast = ast[1:]
                 self.variables[-2] = set_var(Var('.return',*get_var('.return',self.variables[-1],self.globals)),self.variables[-2]) # pass the return statement
                 self.variables = self.variables[:-1] # remove the current scope since we are existing the function call
                 return self.runner(ast)
+            elif(isinstance(ast[0], AST_If)):
+                if(evaluate_expression(ast[0].connections[0].right)):
+                    ast = ast[0].connections[1].connections + ast[1:]
+                elif(len(ast[0].connections) > 2):
+                    ast = ast[0].connections[2].connections + ast[1:]
+                else:
+                    ast = ast[1:]
+                return self.runner(ast)
+            raise Exception("This is not implemented in the interpreter! - ", ast[0])
         return (self.variables, self.globals)
             
                 
     def function_call(self, function_name: str, ast: List[AST_Node], vars: List[dict]):
-        
         _args  = set_var(Var('.return','integer',None),{} ) # args passed down to the function
         _fcall = ast[0] # function call ast node to store to get the args to be passed down
         ast[0] = AST_EndFunctionCall()
@@ -157,10 +167,14 @@ class Interpreter:
             if arg._type == 'string':
                 return Var(arg_name, 'string' ,arg.value) # return a var as string
             if arg._type == 'expression':
-                (self.variables, self.globals) = self.runner([arg])
+                (self.variables, self.globals) = self.runner([arg.connections[0]])
                 return Var(arg_name,*get_var('.return',self.variables[-1],self.globals)) # call the expression
         
         (_params, ast) = split_list_if(ast, lambda x: isinstance(x, AST_FunctionParameter)) # splitting the params of the code block
+        (return_type, ast) = split_list_if(ast, lambda x: isinstance(x, AST_FunctionReturnType)) 
+        if return_type:
+            _args  = set_var(Var('.return',return_type[0].return_type,None),_args )
+            _args =  set_var(Var(function_name,return_type[0].return_type,None),_args )
         args_vars = list(map(lambda arg, param: create_arg(arg, param.parameter_name), _fcall.connections,_params)) # creating the new variables for inside the function call
         _args = functools.reduce(lambda scope,var: set_var(var,scope), args_vars,_args) # adding them to a lookup dictonary
         vars.append(_args) # appending dictorary to the top of the "stack"
@@ -177,9 +191,9 @@ def get_var(var_name, local_scope, globals):
     raise Exception('Variable not initialized or out of scope: ' + var_name) # variable does not exist
 
 def set_var(var: Var, scope):
-    scope[var.var_name] = (var.type, var.value) # might be abled to set a undeclared variable
+    str(var)
+    scope[var.var_name] = (var.type, var.value)
     return scope
-
 
 
 
