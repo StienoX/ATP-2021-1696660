@@ -194,7 +194,7 @@ class Parser():
             new_data = self.parse_discard_until_recusive(data,Token('parentheses_closed'),Token('parentheses_open'),1)
             if self.r_check(new_data[0],[Token('operator')],[check_token_equal_name]):
                 return self.p_expression(data)
-            function_call = AST_FunctionCall('func_call', [])
+            function_call = AST_FunctionCall('func_call', [], data[0][0].data)
             data[1].append(function_call)
             if self.r_check(data[2:], *(self.orders['close'])):
                 return (data[0][2:],data[1])
@@ -404,7 +404,7 @@ class Parser():
             return (new_data[0],data[1])
         
         if (self.r_check(data[0], *(self.orders['f_list']))) or (self.r_check(data[0], *(self.orders['str_f_list']))) or (self.r_check(data[0], *(self.orders['digit']))):
-            ast_param = AST_Parameter('list',[], data[0][1].data, data[0][1].name)
+            ast_param = AST_Parameter('list',[], data[0][0].data, data[0][0].name)
             data[1].append(ast_param)
             return ((data[0][len(self.orders['f_list'][0]):]),data[1])
             

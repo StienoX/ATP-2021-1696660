@@ -182,8 +182,9 @@ class AST_ReadLn(AST_Node):
         super().__init__(ast_type,connections)   
 
 class AST_FunctionCall(AST_Node):
-    def __init__(self, ast_type, connections):
+    def __init__(self, ast_type,connections, _function):
         super().__init__(ast_type,connections)
+        self._function = _function
 
 class AST_Temp(AST_Node):
     def __init__(self):

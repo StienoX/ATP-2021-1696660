@@ -7,7 +7,7 @@ class Var:
         self.value = value
         
     def __str__(self):
-        return str(self.var_name) + ',' + str(self.type) +  ',' + str(self.value)
+        return str(self.value)
     
     __repr__ = __str__
         
@@ -36,7 +36,9 @@ class Functions:
         return self
         
     def get_function(self, function_name):
-        return self.functions[function_name]
+        if function_name in self.functions:
+            return self.functions[function_name]
+        raise Exception('Undefined function' + function_name)
     
     def __str__(self):
         return str(self.functions)
@@ -51,31 +53,109 @@ class Interpreter:
         self.functions = list(map(lambda func: self.functions.add_function(func.procedure_name,func.connections), funcs))[-1]
         (globals, self.ast) = self.get_globals(self.ast)
         self.globals = dict(list(map(lambda _global: (_global.var_name, (_global.var_type, None)),globals)))
-        self.args = {}
         self.variables = [{}]
-        print(self.ast)
         
-    def split_list_if(self, lst, condition):
-        return (list(filter(condition,lst)),list(filter(lambda x: not condition(x),lst)))
+    
     
     def get_functions(self, asts:List[AST_Node]):
-        return self.split_list_if(asts, lambda x: isinstance(x, AST_Function))
+        return split_list_if(asts, lambda x: isinstance(x, AST_Function))
     
     def get_globals(self, asts:List[AST_Node]):
-        return self.split_list_if(asts, lambda x: isinstance(x, AST_Var))
+        return split_list_if(asts, lambda x: isinstance(x, AST_Var))
+        
+    def readln():
+        input_data = input()
+        if input_data.isdigit():
+            return Var('return','int',int(input_data))
+        else:
+            return Var('return','str',str(input_data))
+                
+    def run(self):
+        if self.ast:
+            if isinstance(self.ast[0], AST_Begin):
+                self.ast.extend(self.ast[0].connections)
+                self.ast = self.ast[1:]
+                return self.run()
+            elif isinstance(self.ast[0], AST_Expression):
+                if self.ast[0].right:
+                    
+                    ## OPERATORS
+                    if self.ast[0].right.data == '+':
+                        pass
+                    if self.ast[0].right.data == '-':
+                        pass
+                    if self.ast[0].right.data == ':=':
+                        pass
+                    if self.ast[0].right.data == '*':
+                        pass
+                    if self.ast[0].right.data == '/':
+                        pass
+                    if self.ast[0].right.data == 'or':
+                        pass
+                    if self.ast[0].right.data == 'and':
+                        pass
+                    if self.ast[0].right.data == '=':
+                        pass
+                    if self.ast[0].right.data == '<':
+                        pass
+                    if self.ast[0].right.data == '>':
+                        pass
+                    if self.ast[0].right.data == '>=':
+                        pass
+                    if self.ast[0].right.data == '<=':
+                        pass
+                    
+                    ## LEAF
+                    
+                else:
+                    raise Exception('Empty Expression')
+            elif isinstance(self.ast[0], AST_FunctionCall):
+                (self.ast,self.variables) = self.function_call(self.ast[0]._function,self.ast,self.variables)
+                return self.run()
+            elif isinstance(self.ast[0], AST_WriteLn):
+                print(functools.reduce((lambda rslt, param_print: (rslt + ((str(param_print.value)) if param_print._type != 'identifier' else str(get_var(param_print.value,self.variables[-1],self.globals)[1])))),self.ast[0].connections, ""))
+                self.ast = self.ast[1:]
+                return self.run()
+            if isinstance(self.ast[0], AST_ReadLn):
+                return None
+                return self.run()
+            
+                
+    def function_call(self, function_name: str, ast: List[AST_Node], vars: List[dict]):
+        
+        _args = {} # args passed down to the function
+        _fcall = ast[0] # function call ast node to store to get the args to be passed down
+
+        ast = self.functions.get_function(function_name) + ast[1:] # prepend the function implementation to list of asts
+        def create_arg(arg:AST_Parameter, arg_name: str):
+            if arg._type == 'identifier':
+                return Var(arg_name, *get_var(arg.value,vars[-1],self.globals)) # get the var from the scope provided with the function_call (this is a where clause on a function language) * we dont modify the any of the parameters
+            if arg._type == 'digit':
+                return Var(arg_name, 'integer' ,arg.value) # return a var as digit
+            if arg._type == 'string':
+                return Var(arg_name, 'string' ,arg.value) # return a var as string
+        (_params, ast) = split_list_if(ast, lambda x: isinstance(x, AST_FunctionParameter)) # splitting the params of the code block
+        args_vars = list(map(lambda arg, param: create_arg(arg, param.parameter_name), _fcall.connections,_params)) # creating the new variables for inside the function call
+        _args = functools.reduce(lambda scope,var: set_var(var,scope), args_vars,_args) # adding them to a lookup dictonary
+        vars.append(_args) # appending dictorary to the top of the "stack"
+        return (ast,vars) # returning the modified data
+        
+def split_list_if(lst:List[A], condition: Callable[[A],bool]) -> Tuple[List[A],List[A]]:
+        return (list(filter(condition,lst)),list(filter(lambda x: not condition(x),lst))) # splitting a list into a tuple containing two lists. the first list in the tuple holds all items where the condition holds true, the remaining items are second list inside the tuple.
+            
+        
     
-def get_var(var_name, local_scope, args, globals):
-    if var_name in local_scope:
+def get_var(var_name, local_scope, globals):
+    if var_name in local_scope: # first try and find the variable inside the local scope
         return local_scope[var_name]
-    if var_name in args:
-        return args[var_name]
-    if var_name in globals:
+    if var_name in globals: # variable not fount in the local scope. Lets try and find it in the global scope
         return globals[var_name]
-    raise Exception('Variable not initialized or out of scope')
+    raise Exception('Variable not initialized or out of scope: ' + var_name) # variable does not exist
 
 def set_var(var: Var, scope):
-    scope[var.var_name] = (var.var_type, var.value)
+    scope[var.var_name] = (var.type, var.value) # might be abled to set a undeclared variable
     return scope
+
 
     
 class ProgramState:
