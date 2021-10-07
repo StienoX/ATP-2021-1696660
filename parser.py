@@ -262,14 +262,16 @@ class Parser():
     
     def p_fu_if_block(self, data: Tuple[List[Token],AST_Node]) -> Tuple[List[Token],AST_Node]:
         if self.r_check(data[0],*(self.orders['then'])):
-            return self.p_semicolomn(self.p_fu_if_else(self.parse_until_no_change((data[0][1:],data[1]), [self.p_if,self.p_var,self.p_writeLn,self.p_readLn,self.p_function_call,self.p_expression])))
+            if_true = AST_IfTrue('if_true',[])
+            data[1].append(if_true)
+            return self.p_semicolomn(self.p_fu_if_else((self.parse_until_no_change((data[0][1:],if_true), [self.p_if,self.p_var,self.p_writeLn,self.p_readLn,self.p_function_call,self.p_expression])[0],data[1])))
         return data
     
     def p_fu_if_else(self, data: Tuple[List[Token],AST_Node]) -> Tuple[List[Token],AST_Node]: 
         if self.r_check(data[0], *(self.orders['else'])):
             if_false = AST_IfFalse('if_false',[])
             data[1].append(if_false)
-            return (self.parse_until_no_change((data[0][1:],data[1]), [self.p_if,self.p_var,self.p_writeLn,self.p_readLn,self.p_function_call,self.p_expression])[0],data[1])
+            return (self.parse_until_no_change((data[0][1:],if_false), [self.p_if,self.p_var,self.p_writeLn,self.p_readLn,self.p_function_call,self.p_expression])[0],data[1])
         return data
 
     def p_fu_repeat_block(self, data: Tuple[List[Token],AST_Node]) -> Tuple[List[Token],AST_Node]:
