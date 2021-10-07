@@ -24,7 +24,9 @@ end;
 
 begin
     var input_data : integer;
-    WriteLn('please write a number down:')
+    WriteLn('please write a number down:');
     input_data := ReadLn();
     Print(input_data);
+    input_data := fib(input_data);
+    WriteLn(input_data);
 end.

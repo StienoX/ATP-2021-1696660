@@ -62,7 +62,10 @@ class Interpreter:
             
             if isinstance(node, ExprLeaf):
                 if node.type == 'var':
-                    return get_var(node.data,self.variables[-1],self.globals)[1]
+                    rslt = get_var(node.data,self.variables[-1],self.globals)
+                    if rslt[0] == 'digit' or isinstance(rslt[1], int) or rslt[1].isdigit():
+                        return int(rslt[1])
+                    return rslt
                 else:    
                     return node.data
             
@@ -150,6 +153,7 @@ class Interpreter:
                 else:
                     ast = ast[1:]
                 return self.runner(ast)
+            
             raise Exception("This is not implemented in the interpreter! - ", ast[0])
         return (self.variables, self.globals)
             
@@ -164,11 +168,12 @@ class Interpreter:
                 return Var(arg_name, *get_var(arg.value,vars[-1],self.globals)) # get the var from the scope provided with the function_call (this is a where clause on a function language) * we dont modify the any of the parameters
             if arg._type == 'digit':
                 return Var(arg_name, 'integer' ,arg.value) # return a var as digit
-            if arg._type == 'string':
-                return Var(arg_name, 'string' ,arg.value) # return a var as string
             if arg._type == 'expression':
                 (self.variables, self.globals) = self.runner([arg.connections[0]])
                 return Var(arg_name,*get_var('.return',self.variables[-1],self.globals)) # call the expression
+            if arg._type == 'string':
+                return Var(arg_name, 'string' ,arg.value) # return a var as string
+            
         
         (_params, ast) = split_list_if(ast, lambda x: isinstance(x, AST_FunctionParameter)) # splitting the params of the code block
         (return_type, ast) = split_list_if(ast, lambda x: isinstance(x, AST_FunctionReturnType)) 
@@ -191,8 +196,17 @@ def get_var(var_name, local_scope, globals):
     raise Exception('Variable not initialized or out of scope: ' + var_name) # variable does not exist
 
 def set_var(var: Var, scope):
-    str(var)
-    scope[var.var_name] = (var.type, var.value)
+    #print(var)
+    if var.value == None:
+        vv = var.value
+    elif var.type == 'string':
+        vv = str(var.value)
+    elif var.type == 'digit' or isinstance(var.value,int) or var.value.isdigit():
+        print('digit')
+        vv = int(var.value)
+    else:
+        vv = str(var.value)
+    scope[var.var_name] = (var.type, vv) 
     return scope
 
 
