@@ -154,7 +154,7 @@ class Parser():
             data[1].append(ast_repeat)
             new_data = (self.p_fu_repeat_block(((data[0][len(self.orders['repeat'][0]):]),ast_repeat))[0],data[1])
             if self.r_check(new_data[0], *(self.orders['until'])):
-                new_data = self.p_expression((new_data[0][1:],new_data[1]))
+                new_data = self.p_expression((new_data[0][1:],ast_repeat))
                 return (new_data[0],data[1])
             print("No Until statement found for repeat")
             return new_data
@@ -445,7 +445,7 @@ class Parser():
     # p_function_def_closing_ret :: ([Token],AST_Node) -> ([Token], AST_Node)
     def p_function_def_closing_ret(self, data: Tuple[List[Token],AST_Node]) -> Tuple[List[Token],AST_Node]:
         if self.r_check(data[0], *(self.orders['func_ret'])):
-            ast_return = AST_FunctionReturnType('func_ret',[], data[0][2])
+            ast_return = AST_FunctionReturnType('func_ret',[], data[0][2].data)
             data[1].append(ast_return)
             return ((data[0][len(self.orders['func_ret'][0]):]),data[1])
         return data

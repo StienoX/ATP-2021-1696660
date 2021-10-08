@@ -4,7 +4,7 @@ class Var:
     def __init__(self, var_name, var_type, value):
         self.var_name = var_name
         self.type = var_type
-        self.value: Union[int,str] = value
+        self.value: Union[int,str,bool,None] = value
     
     def __str__(self):
         return str(self.value)
@@ -57,17 +57,20 @@ class Interpreter:
     def run(self):
         return self.runner(self.ast)
     def runner(self, ast):
-        def evaluate_expression(node: Union[ExprLeaf,ExprNode,AST_FunctionCall,AST_ReadLn]) -> Union[None,int,str]:
+        def evaluate_expression(node: Union[ExprLeaf,ExprNode,AST_FunctionCall,AST_ReadLn]) -> Union[None,int,str,bool]:
             ## LEAF
             
             if isinstance(node, ExprLeaf):
                 if node.type == 'var':
                     rslt = get_var(node.data,self.variables[-1],self.globals)
-                    if rslt[0] == 'digit' or isinstance(rslt[1], int) or rslt[1].isdigit():
+                    if rslt[0] == 'integer' or isinstance(rslt[1], int) or rslt[1].isdigit():
                         return int(rslt[1])
-                    return rslt
-                else:    
-                    return node.data
+                    return rslt[1]
+                else:
+                    if node.type == 'digit':
+                        return int(node.data)
+                    if node.type == 'string':
+                        return str(node.data)            
             
             ## Function call (leaf)
             if isinstance(node, AST_FunctionCall):
@@ -119,6 +122,8 @@ class Interpreter:
                         self.variables[-1] = set_var(Var('.return','integer',eval),self.variables[-1]) # sets return value to the evaluated value and returns it as int
                     if isinstance(eval,str):
                         self.variables[-1] = set_var(Var('.return','string',eval),self.variables[-1]) # sets return value to the evaluated value and returns it as string
+                    if isinstance(eval,bool):
+                        self.variables[-1] = set_var(Var('.return','bool',eval),self.variables[-1]) # sets return value to the evaluated value and returns it as string
                     ast = ast[1:]
                     return self.runner(ast)
                 else:
@@ -146,13 +151,18 @@ class Interpreter:
                 self.variables = self.variables[:-1] # remove the current scope since we are existing the function call
                 return self.runner(ast)
             elif(isinstance(ast[0], AST_If)):
-                if(evaluate_expression(ast[0].connections[0].right)):
-                    ast = ast[0].connections[1].connections + ast[1:]
+                if(evaluate_expression(ast[0].connections[0].right)): ## check the result of the if statement
+                    ast = ast[0].connections[1].connections + ast[1:] ## if true block
                 elif(len(ast[0].connections) > 2):
-                    ast = ast[0].connections[2].connections + ast[1:]
+                    ast = ast[0].connections[2].connections + ast[1:] ## if false block
                 else:
-                    ast = ast[1:]
+                    ast = ast[1:] # if false block does not exist
                 return self.runner(ast)
+            elif(isinstance(ast[0], AST_Repeat)):
+                (self.variables, self.globals) = self.runner(ast[0].connections) # giving only the the ast reciding inside the repeat block
+                if get_var('.return',self.variables[-1],self.globals): # check the result of the untill statement
+                    return self.runner(ast[1:]) # we are done repeating
+                return self.runner(ast) # we are not done repeating yet
             
             raise Exception("This is not implemented in the interpreter! - ", ast[0])
         return (self.variables, self.globals)
@@ -173,6 +183,7 @@ class Interpreter:
                 return Var(arg_name,*get_var('.return',self.variables[-1],self.globals)) # call the expression
             if arg._type == 'string':
                 return Var(arg_name, 'string' ,arg.value) # return a var as string
+            raise Exception('No var could be created')
             
         
         (_params, ast) = split_list_if(ast, lambda x: isinstance(x, AST_FunctionParameter)) # splitting the params of the code block
@@ -196,13 +207,13 @@ def get_var(var_name, local_scope, globals):
     raise Exception('Variable not initialized or out of scope: ' + var_name) # variable does not exist
 
 def set_var(var: Var, scope):
-    #print(var)
+    if isinstance(var.value,Var):
+        raise Exception('Got a variable inside a variable')
     if var.value == None:
         vv = var.value
     elif var.type == 'string':
         vv = str(var.value)
-    elif var.type == 'digit' or isinstance(var.value,int) or var.value.isdigit():
-        print('digit')
+    elif var.type == 'integer' or isinstance(var.value,int) or var.value.isdigit():
         vv = int(var.value)
     else:
         vv = str(var.value)
