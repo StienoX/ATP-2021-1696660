@@ -160,7 +160,7 @@ class Interpreter:
                 return self.runner(ast)
             elif(isinstance(ast[0], AST_Repeat)):
                 (self.variables, self.globals) = self.runner(ast[0].connections) # giving only the the ast reciding inside the repeat block
-                if get_var('.return',self.variables[-1],self.globals): # check the result of the untill statement
+                if bool(get_var('.return',self.variables[-1],self.globals)[1]): # check the result of the untill statement
                     return self.runner(ast[1:]) # we are done repeating
                 return self.runner(ast) # we are not done repeating yet
             

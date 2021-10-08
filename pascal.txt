@@ -17,8 +17,13 @@ begin
     var input_data : integer;
     var fibn : integer;
     var a : integer;
+    a := 0
     WriteLn('Please write a number down:');
     input_data := ReadLn();
+    repeat
+        a := a + 1
+        WriteLn(a)
+    until a = 10;
     Print(input_data);
     fibn := fib(input_data);
     WriteLn("Fibonacci number at place ",input_data," is: ",fibn, "   *(using the original definition)");
