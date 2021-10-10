@@ -1,30 +1,40 @@
 from utils import *
 
+# CLASS : Var
+# Brief : This class stores a variable, used as a struct
 class Var:
-    def __init__(self, var_name, var_type, value):
+    def __init__(self, var_name: str, var_type: str, value: Union[int,str,bool,None]):
         self.var_name = var_name
         self.type = var_type
         self.value: Union[int,str,bool,None] = value
-    
-    def __str__(self):
+
+    def __str__(self) -> str:
         return str(self.value)
     
     __repr__ = __str__
 
+
+# CLASS : Functions
+# Brief : This class implements a dict to store functions 
+# Functions:
+# add_function : this function adds a function to the internal dict
+# get_function : this function gets a function from the internal dict, return a list of ast_nodes
 class Functions:
     def __init__(self):
         self.functions = {}
-        
-    def add_function(self, function_name, instructions):
+    
+    # add_function :: Functions -> str -> [AST_Node] -> Functions
+    def add_function(self, function_name: str, instructions: List[AST_Node]):
         self.functions[function_name] = instructions
         return self
-        
-    def get_function(self, function_name):
+    
+    # get_function :: Functions -> str -> [AST_Node]
+    def get_function(self, function_name: str) -> List[AST_Node]:
         if function_name in self.functions:
             return self.functions[function_name]
         raise Exception('Undefined function' + function_name)
     
-    def __str__(self):
+    def __str__(self) -> str:
         return str(self.functions)
     
     __repr__ = __str__
@@ -174,7 +184,7 @@ class Interpreter:
         return (self.variables, self.globals)
             
                 
-    def function_call(self, function_name: str, ast: List[AST_Node], vars: List[dict]):
+    def function_call(self, function_name: str, ast: List[AST_Node], vars: List[dict]) -> Tuple[List[AST_Node],List[dict]]:
         _args  = set_var(Var('.return','integer',None),{} ) # args passed down to the function
         _fcall = ast[0] # function call ast node to store to get the args to be passed down
         ast[0] = AST_EndFunctionCall()
@@ -201,18 +211,17 @@ class Interpreter:
         _args = functools.reduce(lambda scope,var: set_var(var,scope), args_vars,_args) # adding them to a lookup dictonary
         vars.append(_args) # appending dictorary to the top of the "stack"
         return (ast,vars) # returning the modified data
-        
-def split_list_if(lst:List[A], condition: Callable[[A],bool]) -> Tuple[List[A],List[A]]:
-        return (list(filter(condition,lst)),list(filter(lambda x: not condition(x),lst))) # splitting a list into a tuple containing two lists. the first list in the tuple holds all items where the condition holds true, the remaining items are second list inside the tuple.
-               
-def get_var(var_name, local_scope, globals):
+
+# get_var :: str -> dict -> dict -> (str,A)
+def get_var(var_name: str, local_scope:dict, globals:dict) -> Tuple[str,A]:
     if var_name in local_scope: # first try and find the variable inside the local scope
         return local_scope[var_name]
     if var_name in globals: # variable not fount in the local scope. Lets try and find it in the global scope
         return globals[var_name]
     raise Exception('Variable not initialized or out of scope: ' + var_name) # variable does not exist
 
-def set_var(var: Var, scope):
+# set_var :: Var -> dict -> dict
+def set_var(var: Var, scope: dict) -> dict:
     if isinstance(var.value,Var):
         raise Exception('Got a variable inside a variable')
     if var.value == None:

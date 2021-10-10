@@ -7,8 +7,14 @@ B = TypeVar("B")
 C = TypeVar("C")
 D = TypeVar("D")
 
-def compose(functions):
+# [A] -> A
+def compose(functions: List[Callable]) -> Callable:
     return functools.reduce(lambda f, g: lambda x: f(g(x)), functions, lambda x: x)
+
+# returns a tuple where ([0] <- condition is true, [1] <- condition is false)
+# split_list_if :: [A] -> (A -> bool) -> ([A],[A])
+def split_list_if(lst:List[A], condition: Callable[[A],bool]) -> Tuple[List[A],List[A]]:
+        return (list(filter(condition,lst)),list(filter(lambda x: not condition(x),lst))) # splitting a list into a tuple containing two lists. the first list in the tuple holds all items where the condition holds true, the remaining items are second list inside the tuple.
 
 # CLASS : Token
 # Brief : This class stores tokens that are generated from the lexer and used in the parser class
@@ -20,7 +26,7 @@ class Token:
         self.data = data
         if data == '':
             self.data = self.name
-    def __str__(self):
+    def __str__(self) -> str:
         return '(' + self.name + ',' + self.data + ') '
         
     def __eq__(self, other):
@@ -71,12 +77,14 @@ class AST_Node:
         
     def __delitem__(self, key):
         del self.connections[key]
-        
+    
+    # AST_Node -> AST_Node -> AST_Node
     def append(self, node):
         self.connections.append(node)
         return self
-        
-    def __str__(self, level=0):
+    
+    # __str__ :: str
+    def __str__(self, level=0) -> str:
         ret = ["-"*level+repr(self.type)+"\n"]
         ret.extend(list((map(lambda connection: connection.__str__(level+1), self.connections))))
         return ''.join(ret)
@@ -84,9 +92,8 @@ class AST_Node:
     __repr__ = __str__
     
 class AST_ERROR(AST_Node):
-    def __init__(self, connections, program_name):
-        super().__init__("error",[connections])
-        self.program_name = program_name
+    def __init__(self):
+        super().__init__("error",[])
 
 class AST_Program(AST_Node):
     def __init__(self, ast_type, connections, program_name):
@@ -142,8 +149,9 @@ class AST_Expression(AST_Node):
         super().__init__(ast_type,connections)
         self.precedence = -1
         self.right = None
-        
-    def __str__(self, level=0):
+    
+    # __str__ :: str
+    def __str__(self, level=0) -> str:
         ret = "-"*level+repr(self.type)+"\n"
         if self.right:
             ret += 'h' + self.right.__str__(level+1)
@@ -195,6 +203,8 @@ def pre_prossesing(program: str) -> str:
     program = program.replace('\t', '    ')
     return program
 
+# CLASS : ExprNode
+# Brief : This class is a specialized version of the AST_Node that is used in a expression tree to store operators
 class ExprNode(AST_Node):
     def __init__(self, data, precedence):
         super().__init__("expression_node",[])
@@ -202,33 +212,39 @@ class ExprNode(AST_Node):
         self.precedence = precedence
         self.left: Union[None, ExprNode, ExprLeaf] = None
         self.right: Union[None, ExprNode, ExprLeaf] = None
-
-    def __str__(self, level=0):
+    
+    # __str__ :: str
+    def __str__(self, level=0) -> str:
         ret = "-"*level+repr(self.type)+ ',' + repr(self.data)+"\n"
         if self.left:
             ret += 'l' + self.left.__str__(level+1)
         if self.right:
             ret += 'r' + self.right.__str__(level+1)
         return ret
-        
-    def __eq__(self, other):
+    
+    # __eq__ :: ExprNoode -> ExprNode -> bool
+    def __eq__(self, other) -> bool:
         return self.precedence == other.precedence
     
-    def __lt__(self, other):
+    # __lt__ :: ExprNoode -> ExprNode -> bool
+    def __lt__(self, other) -> bool:
         return self.precedence < other.precedence
     
-    def __gt__(self, other):
+    # __gt__ :: ExprNoode -> ExprNode -> bool
+    def __gt__(self, other) -> bool:
         return self.precedence > other.precedence
     
     __repr__ = __str__
-    
+
+# CLASS : ExprNode
+# Brief : This class is a specialized version of the AST_Node that is used in a expression tree to store leafs 
 class ExprLeaf(AST_Node):
     def __init__(self, type, data):
         super().__init__("expression_leaf",[])
         self.type = type #type or function or var
         self.data = data
         
-    def __str__(self, level=0):
+    def __str__(self, level=0) -> str:
         return "-"*level+repr(self.type)+ ',' + repr(self.data)+"\n"
     
     __repr__ = __str__

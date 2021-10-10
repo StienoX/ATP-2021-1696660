@@ -1,4 +1,6 @@
 from utils import *
+
+
 # CLASS : Parser
 # Brief : This class implements the parser functionality of pascal language
 # Functions:
@@ -13,7 +15,6 @@ from utils import *
 # self.orders : is a Dict that contains the order of tokens that needs to be parsed with their corresponding check functions (to be used in r_check function)
 # self.precedence_order : precedence_order is a list that contains tuples of operators with their precedence. The higher the precedence the earlier it needs to be executed, 
 # and thus the lower it will put placed in the expression tree
-
 class Parser():
     def __init__(self):
         self.orders =           {'program' :    (   [Token('keyword','program')   ,Token('identifier')      ,Token('keyword',';')], 
