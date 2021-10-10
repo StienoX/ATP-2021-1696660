@@ -34,9 +34,11 @@ Minstens drie toepassingen van hogere-orde functies:
 
 2. [parser.py] - [144] (parse_until_no_change)
 
-3. [interpreter] - [65] (map)
+3. [interpreter.py] - [65] (map)
 
-4. (Zijn er heel veel, Bijna elke functie gebruikt een hogere orde functie)
+4. [utils.py] - [17] (filter)
+
+5. (Zijn er heel veel, Bijna elke functie gebruikt een hogere orde functie, bv r_check, lex_something)
 
 Interpreter-functionaliteit Must-have:
 
