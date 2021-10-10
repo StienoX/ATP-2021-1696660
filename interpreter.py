@@ -174,7 +174,7 @@ class Interpreter:
                 
                 return self.runner(ast)
             elif isinstance(ast[0], AST_WriteLn):
-                print(functools.reduce((lambda rslt, param_print: (rslt + ((str(param_print.value)) if param_print._type != 'identifier' else str(get_var(param_print.value,self.variables[-1],self.globals)[1])))),ast[0].connections, ""))
+                print(functools.reduce((lambda rslt, param_print: (rslt + ( (str(get_var(param_print.value,self.variables[-1],self.globals)[1])) if param_print._type == 'identifier' else (str(param_print.value)) if param_print._type != 'expression' else str(evaluate_expression(param_print.connections[0].right))))),ast[0].connections, ""))
                 ast = ast[1:]
                 self.variables[-1] = set_var(Var('.return','integer',None),self.variables[-1]) # sets return value to None
                 return self.runner(ast)
