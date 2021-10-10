@@ -9,21 +9,20 @@ def main():
     parser  = Parser()
     
     # lexing and parsing both files
-    main = parser.run(lexer.run(pre_prossesing(Path('pascal.txt').read_text())))
-    lib = parser.run(lexer.run(pre_prossesing(Path('pascal_lib.txt').read_text())))
+    main  = parser.run(lexer.run(pre_prossesing(Path('pascal.txt').read_text())))
+    lib   = parser.run(lexer.run(pre_prossesing(Path('pascal_lib.txt').read_text())))
     tests = parser.run(lexer.run(pre_prossesing(Path('pascal_test_functions.txt').read_text())))
     
     # running tests
     test = Interpreter(tests)
     test.run()
     
-    #linking files
+    # linking files
     interpreter = Interpreter(main)
     interpreter.add_lib(lib)
     
     # execute ast
     interpreter.run()
-    
     
 if __name__== "__main__":
     main()
