@@ -1,5 +1,7 @@
 from utils import *
 
+
+
 # CLASS : Lexer
 # Brief : This class implements the lexer functionality of pascal language
 # Functions:
@@ -45,8 +47,7 @@ class Lexer():
                                 self.lex_parentheses, 
                                 self.lex_strings
                               ])
-        
-    
+
     # lex_something :: ([a],[b]) -> (a -> b) -> ([a],[b])
     def lex_something(self, data:Tuple[List[A],List[B]], check:Callable[[A],B], return_function:Callable[[A],B]) -> Tuple[List[A],List[B]]:
         if len(check):
@@ -145,6 +146,6 @@ class Lexer():
     def run(self, string: str) -> List[Token]:
         return self.lex_all((string,[]))[1]
     
-    def __str__(self):
+    def __str__(self) -> str:
         return 'Lexes the following symbols:' + str([self.types,self.keywords,self.operators,self.brackets,self.curly_bracket,self.parentheses,self.strings,self.digits,[" "]])
     __repr__ = __str__

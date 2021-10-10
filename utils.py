@@ -10,11 +10,6 @@ D = TypeVar("D")
 def compose(functions):
     return functools.reduce(lambda f, g: lambda x: f(g(x)), functions, lambda x: x)
 
-def reverse_tuple_containing_lists(t: Tuple[List,List]):
-    t[0].reverse()
-    t[1].reverse()
-    return t
-
 # CLASS : Token
 # Brief : This class stores tokens that are generated from the lexer and used in the parser class
 # Descr : The class stores 2 values: name & data. name is used for the tokenname. data is used for the exctual data. 
@@ -35,29 +30,28 @@ class Token:
     
 # check_token_equal_name :: Token -> Token -> Bool
 def check_token_equal_name(token1: Token,token2: Token) -> bool:
-    try: ## debugging can be removed
-        return token1.name == token2.name
-    except:
-        print("ERROR GOT AN INVALED TOKEN")
-        print(token1)
-        print(token2)
-        assert()
-        return False
+    return token1.name == token2.name
+
 
 # check_token_equal_data :: Token -> Token -> Bool
 def check_token_equal_data(token1: Token,token2: Token) -> bool:
-    try: ## debugging can be removed
-        return token1.data == token2.data
-    except:
-        print("ERROR GOT AN INVALED TOKEN")
-        print(token1)
-        print(token2)
-        assert()
-        return False
+    return token1.data == token2.data
+
 
 # check_token_equal_all :: Token -> Token -> Bool
 def check_token_equal_all(token1: Token,token2: Token) -> bool:
     return check_token_equal_data(token1,token2) and check_token_equal_name(token1,token2)
+
+# r_check :: [Token] -> [Token] -> [([Token] -> [Token] -> Bool)]
+def r_check(tokens: List[Token], expected_tokens: List[Token], checks: List[Callable[[[Token],[Token]], bool]]) -> bool:
+    if tokens and (not isinstance(tokens[0], Token)):
+        print(tokens)
+        assert()
+    if not len(checks):
+        return True
+    elif len(tokens) and checks[0](tokens[0],expected_tokens[0]):
+        return r_check(tokens[1:],expected_tokens[1:],checks[1:])
+    return False
 
 # CLASS : AST_Node
 # Brief : This class stores nodes that are generated from the parser and used in the interpreter class for executing the pascal program
@@ -194,7 +188,6 @@ class AST_EndFunctionCall(AST_Node):
     def __init__(self):
         super().__init__('EFC',[])
         
-
 
 # pre_prossesing :: String -> String
 def pre_prossesing(program: str) -> str:

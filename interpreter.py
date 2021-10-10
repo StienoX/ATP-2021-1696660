@@ -42,6 +42,11 @@ class Interpreter:
         self.variables = [{}] 
         self.variables[-1] = set_var(Var('.return','integer',None),self.variables[-1])
     
+    def add_other_ast(self, ast):
+        self.functions = Functions()
+        (funcs, _) = self.get_functions(ast)
+        self.functions = list(map(lambda func: self.functions.add_function(func.procedure_name,func.connections), funcs))[-1]
+        
     def get_functions(self, asts:List[AST_Node]):
         return split_list_if(asts, lambda x: isinstance(x, AST_Function))
     
@@ -56,6 +61,8 @@ class Interpreter:
             return str(input_data)
     def run(self):
         return self.runner(self.ast)
+    
+    
     def runner(self, ast):
         def evaluate_expression(node: Union[ExprLeaf,ExprNode,AST_FunctionCall,AST_ReadLn]) -> Union[None,int,str,bool]:
             ## LEAF
@@ -110,7 +117,6 @@ class Interpreter:
                 return evaluate_expression(node.left) >= evaluate_expression(node.right)
             if node.data == '<=':
                 return evaluate_expression(node.left) <= evaluate_expression(node.right)
-        #print(ast) ## DEBUG
         if ast:
             if isinstance(ast[0], AST_Begin):
                 ast = ast[0].connections + ast[1:]
@@ -219,7 +225,3 @@ def set_var(var: Var, scope):
         vv = str(var.value)
     scope[var.var_name] = (var.type, vv) 
     return scope
-
-
-
-        

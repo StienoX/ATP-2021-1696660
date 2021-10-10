@@ -13,18 +13,32 @@ begin
     WriteLn('Your number was:',j)
 end;
 
+function add(a : integer, b : integer): integer;
+begin
+    add := a + b
+end;
+
 begin
     var input_data : integer;
     var fibn : integer;
     var a : integer;
-    a := 0
-    WriteLn('Please write a number down:');
-    input_data := ReadLn();
+    a := 0;
+    
+    WriteLn("Count to 10:");
+
     repeat
         a := a + 1
         WriteLn(a)
     until a = 10;
+    WriteLn();
+
+    WriteLn(2+3*(2+3) + a * 3 + 3);
+
+
+    WriteLn('Please write a number down:');
+    input_data := ReadLn();
     Print(input_data);
+
     fibn := fib(input_data);
     WriteLn("Fibonacci number at place ",input_data," is: ",fibn, "   *(using the original definition)");
 end.
