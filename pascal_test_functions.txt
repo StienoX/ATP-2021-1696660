@@ -1,0 +1,39 @@
+program Tests;
+
+function odd(n : integer): integer;
+begin
+    if (n = 0) then
+        odd:=0
+    else
+        odd := even(n-1);
+end;
+
+function even(n : integer): integer;
+begin
+    if (n = 0) then
+        even:=1
+    else
+        even := odd(n-1);
+end;
+
+function sommig(n : integer): integer;
+begin
+    var result : integer;
+    result := 0;
+    repeat
+        result := result + n
+        n := n - 1
+    until n = 0;
+    sommig := result;
+end;
+
+begin
+    var sommig_result   : integer;
+    var even_result     : integer;
+    var odd_result      : integer;
+    sommig_result   := sommig(4);
+    even_result     := even(4);
+    odd_result      := odd(4);
+
+    WriteLn(sommig_result,' ',even_result,' ',odd_result);
+end.

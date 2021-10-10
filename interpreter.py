@@ -39,11 +39,27 @@ class Functions:
     
     __repr__ = __str__
 
-
-## all internal used variables start with .
-
+# CLASS : Interpreter
+# Brief : This class runs the ast
+#
+# Functions:
+# add_lib : adds other functions from other files
+# get_functions : internal function used to get all function from the ast
+# get_globals : internal function used to get all global declared variables from the ast
+# readln : internal function to get the input from the user
+# run : runs the ast
+# runner : internal function to run the ast. Checks for if,repeat,expressions,var declarations, function calls etc
+# function_call : internal function to handle functioncall in pascall
+#
+# variables: 
+# self.functions : stores all functions 
+# self.globals : stores all globals
+# self.variables : stores variables
+# self.ast : stores a list of the current execution stack
+#
+# note: all internal used variables start with . (for example return variables)
 class Interpreter:
-    def __init__(self, ast):
+    def __init__(self, ast: AST_Program):
         self.functions = Functions() # wrapper around a dict
         (funcs, self.ast) = self.get_functions(ast)
         self.functions = list(map(lambda func: self.functions.add_function(func.procedure_name,func.connections), funcs))[-1]
@@ -52,28 +68,34 @@ class Interpreter:
         self.variables = [{}] 
         self.variables[-1] = set_var(Var('.return','integer',None),self.variables[-1])
     
-    def add_other_ast(self, ast):
-        self.functions = Functions()
+    # add_lib :: [AST_Node] -> Interpreter
+    def add_lib(self, ast):
         (funcs, _) = self.get_functions(ast)
         self.functions = list(map(lambda func: self.functions.add_function(func.procedure_name,func.connections), funcs))[-1]
-        
-    def get_functions(self, asts:List[AST_Node]):
+        return self
+    
+    # get_functions :: [AST_Node] -> ([AST_Node],[AST_Node])
+    def get_functions(self, asts:List[AST_Node]) -> Tuple[List[AST_Node]]:
         return split_list_if(asts, lambda x: isinstance(x, AST_Function))
     
+    # get_globals :: [AST_Node] -> ([AST_Node],[AST_Node])
     def get_globals(self, asts:List[AST_Node]):
         return split_list_if(asts, lambda x: isinstance(x, AST_Var))
-        
-    def readln(self):
+    
+    # readln :: int | str
+    def readln(self) -> Union[int,str]:
         input_data = input()
         if input_data.isdigit():
             return int(input_data)
         else:
             return str(input_data)
-    def run(self):
+    
+    # run :: (dict,dict)
+    def run(self) -> Tuple[dict,dict]:
         return self.runner(self.ast)
     
-    
-    def runner(self, ast):
+    # runner :: AST_Node -> (dict,dict)
+    def runner(self, ast: AST_Node) -> Tuple[dict,dict]:
         def evaluate_expression(node: Union[ExprLeaf,ExprNode,AST_FunctionCall,AST_ReadLn]) -> Union[None,int,str,bool]:
             ## LEAF
             
@@ -127,10 +149,12 @@ class Interpreter:
                 return evaluate_expression(node.left) >= evaluate_expression(node.right)
             if node.data == '<=':
                 return evaluate_expression(node.left) <= evaluate_expression(node.right)
-        if ast:
+            
+        if ast:        
             if isinstance(ast[0], AST_Begin):
                 ast = ast[0].connections + ast[1:]
                 return self.runner(ast)
+            
             elif isinstance(ast[0], AST_Expression):
                 if ast[0].right:  
                     eval = evaluate_expression(ast[0].right)
@@ -139,33 +163,39 @@ class Interpreter:
                     if isinstance(eval,str):
                         self.variables[-1] = set_var(Var('.return','string',eval),self.variables[-1]) # sets return value to the evaluated value and returns it as string
                     if isinstance(eval,bool):
-                        self.variables[-1] = set_var(Var('.return','bool',eval),self.variables[-1]) # sets return value to the evaluated value and returns it as string
+                        self.variables[-1] = set_var(Var('.return','bool',eval),self.variables[-1]) # sets return value to the evaluated value and returns it as bool
                     ast = ast[1:]
                     return self.runner(ast)
                 else:
                     raise Exception('Error in expression')
+                
             elif isinstance(ast[0], AST_FunctionCall):
                 (ast,self.variables) = self.function_call(ast[0]._function,ast,self.variables)
+                
                 return self.runner(ast)
             elif isinstance(ast[0], AST_WriteLn):
                 print(functools.reduce((lambda rslt, param_print: (rslt + ((str(param_print.value)) if param_print._type != 'identifier' else str(get_var(param_print.value,self.variables[-1],self.globals)[1])))),ast[0].connections, ""))
                 ast = ast[1:]
                 self.variables[-1] = set_var(Var('.return','integer',None),self.variables[-1]) # sets return value to None
                 return self.runner(ast)
+            
             elif isinstance(ast[0], AST_ReadLn):
                 ast = ast[1:]
                 self.variables[-1] = set_var(self.readln(),self.variables[-1])
                 return self.runner(ast)
+            
             elif isinstance(ast[0], AST_Var):
                 self.variables[-1] = set_var(Var('.return','integer',None),self.variables[-1]) # sets return value to None
                 self.variables[-1] = set_var(Var(ast[0].var_name,ast[0].var_type,None),self.variables[-1]) # Made a variable with no value yet
                 ast = ast[1:]
                 return self.runner(ast)
+            
             elif isinstance(ast[0], AST_EndFunctionCall):
                 ast = ast[1:]
                 self.variables[-2] = set_var(Var('.return',*get_var('.return',self.variables[-1],self.globals)),self.variables[-2]) # pass the return statement
                 self.variables = self.variables[:-1] # remove the current scope since we are existing the function call
                 return self.runner(ast)
+            
             elif(isinstance(ast[0], AST_If)):
                 if(evaluate_expression(ast[0].connections[0].right)): ## check the result of the if statement
                     ast = ast[0].connections[1].connections + ast[1:] ## if true block
@@ -174,6 +204,7 @@ class Interpreter:
                 else:
                     ast = ast[1:] # if false block does not exist
                 return self.runner(ast)
+            
             elif(isinstance(ast[0], AST_Repeat)):
                 (self.variables, self.globals) = self.runner(ast[0].connections) # giving only the the ast reciding inside the repeat block
                 if bool(get_var('.return',self.variables[-1],self.globals)[1]): # check the result of the untill statement
@@ -183,7 +214,7 @@ class Interpreter:
             raise Exception("This is not implemented in the interpreter! - ", ast[0])
         return (self.variables, self.globals)
             
-                
+    # function_call :: str -> [AST_Node] -> [dict] -> ([AST_Node],[dict])
     def function_call(self, function_name: str, ast: List[AST_Node], vars: List[dict]) -> Tuple[List[AST_Node],List[dict]]:
         _args  = set_var(Var('.return','integer',None),{} ) # args passed down to the function
         _fcall = ast[0] # function call ast node to store to get the args to be passed down
@@ -200,7 +231,6 @@ class Interpreter:
             if arg._type == 'string':
                 return Var(arg_name, 'string' ,arg.value) # return a var as string
             raise Exception('No var could be created')
-            
         
         (_params, ast) = split_list_if(ast, lambda x: isinstance(x, AST_FunctionParameter)) # splitting the params of the code block
         (return_type, ast) = split_list_if(ast, lambda x: isinstance(x, AST_FunctionReturnType)) 

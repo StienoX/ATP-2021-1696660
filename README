@@ -1,6 +1,6 @@
 Gekozen taal: Pascal
 
-Turing-compleet omdat: Pascal turing compleet is
+Turing-compleet omdat: pacal turing complete echter ik heb niet alles van pascal kunnen implementeren. Maar conditional branching door middel van if's en repeats zijn geimplementeerd en de mogelijkheid on een willekeurige hoeveelheid geheugen aan te passen is mogelijk door middel van nieuwe variable te declaren.
 
  
 
@@ -10,41 +10,40 @@ Code is geschreven in functionele stijl.
 
 Taal ondersteunt:
 
-Loops? Voorbeeld: [pascal.txt] - [24-27]
+Loops? Voorbeeld: [pascal.txt] - [16]
 
-Goto-statements? Voorbeeld: [pascal.txt] - [regel]
+Goto-statements? Voorbeeld: [pascal.txt] - [27 & 29]
 
-Lambda-calculus? Voorbeeld: [pascal.txt] - [30] (met variables en function calls)
+Lambda-calculus? Voorbeeld: [pascal.txt] - [22] (met variables en function calls)
 
  
 
 Bevat:
 
-Classes met inheritance: bijvoorbeeld [file] - [regel]
+Classes met inheritance: bijvoorbeeld [utils.py] - [66-250]
 
-Object-printing voor elke class: [ja/nee]
+Object-printing voor elke class: [ja]
 
-Decorator: functiedefinitie op [file] - [regel], toegepast op [file] - [regel]
+Decorator: functiedefinitie op [parser.py] - [444], toegepast op [parser.py] - [451]
 
-Type-annotatie: Haskell-stijl in comments: [ja/nee]; Python-stijl in functiedefinities: [ja/nee]
+Type-annotatie: Haskell-stijl in comments: [ja]; Python-stijl in functiedefinities: [ja]
 
 Minstens drie toepassingen van hogere-orde functies:
 
-1. [file] - [regel]
+1. [lexer.py] - [101] (reduce)
 
-2. [file] - [regel]
+2. [parser.py] - [144] (parse_until_no_change)
 
-3. [file] - [regel]
+3. [interpreter] - [65] (map)
 
- 
+4. (Zijn er heel veel, Bijna elke functie gebruikt een hogere orde functie)
 
 Interpreter-functionaliteit Must-have:
 
 Functies: [één per file / meer per file] [Check]
 
-Functie-parameters kunnen aan de interpreter meegegeven worden door: Door ReadLn functie
+Functie-parameters kunnen aan de interpreter meegegeven worden door: Door de ReadLn functie
 
-Functies kunnen andere functies aanroepen: zie voorbeeld [file] - [regel]
+Functies kunnen andere functies aanroepen: zie voorbeeld [pascal_test_functions.txt] - [3-17]
 
-Functie resultaat wordt op de volgende manier weergegeven:
-
+Functie resultaat wordt op de volgende manier weergegeven: Door de WriteLn functie

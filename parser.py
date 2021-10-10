@@ -142,7 +142,7 @@ class Parser():
     def p_program(self, tokens: List[Token]) -> Tuple[List[Token],AST_Node]:
         if r_check(tokens, *(self.orders['program'])):   
             return self.p_eof(self.parse_until_no_change(((tokens[len(self.orders['program'][0]):]),AST_Program('program',[],tokens[1].name)), 
-                                              [self.p_repeat,self.p_function,self.p_if,self.p_var,self.p_writeLn,self.p_readLn,self.p_function_call,self.p_expression,self.p_semicolomn,self.p_begin]))
+                                              [self.p_function,self.p_if,self.p_var,self.p_writeLn,self.p_readLn,self.p_function_call,self.p_repeat,self.p_expression,self.p_semicolomn,self.p_begin]))
         else:
             print("No program identifier")
         return None
@@ -278,7 +278,7 @@ class Parser():
     # the follow-up parser for begin blocks [p_begin]
     # p_fu_begin :: ([Token], AST_Node) -> ([Token], AST_Node)
     def p_fu_begin(self, data: Tuple[List[Token],AST_Node]) -> Tuple[List[Token],AST_Node]:
-        return self.parse_until_no_change(data, [self.p_if,self.p_var,self.p_writeLn,self.p_readLn,self.p_function_call,self.p_expression,self.p_semicolomn])
+        return self.parse_until_no_change(data, [self.p_repeat,self.p_if,self.p_var,self.p_writeLn,self.p_readLn,self.p_function_call,self.p_expression,self.p_semicolomn])
     
     # the follow-up parser for if statements [p_if]
     # p_fu_if :: ([Token], AST_Node) -> ([Token], AST_Node)

@@ -1,26 +1,13 @@
 program Printing;
 
-function fib(x:integer):integer;
-begin
-  if (x = 0 or x = 1) then
-    fib:=1
-  else
-    fib:=fib(x - 2) + fib(x - 1);
-end;
-
 function Print(j : integer);
 begin
     WriteLn('Your number was:',j)
 end;
 
-function add(a : integer, b : integer): integer;
-begin
-    add := a + b
-end;
-
 begin
     var input_data : integer;
-    var fibn : integer;
+    var fib_result : integer;
     var a : integer;
     a := 0;
     
@@ -30,15 +17,15 @@ begin
         a := a + 1
         WriteLn(a)
     until a = 10;
+
     WriteLn();
-
     WriteLn(2+3*(2+3) + a * 3 + 3);
-
-
-    WriteLn('Please write a number down:');
+    WriteLn();
+    
+    WriteLn('Please provide the position in the fibonacci sequence:');
     input_data := ReadLn();
     Print(input_data);
 
-    fibn := fib(input_data);
-    WriteLn("Fibonacci number at place ",input_data," is: ",fibn, "   *(using the original definition)");
+    fib_result := fib(input_data);
+    WriteLn("Fibonacci number at place ",input_data," is: ",fib_result, "   *(using the original definition)");
 end.
