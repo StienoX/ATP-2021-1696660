@@ -1,7 +1,5 @@
 from utils import *
 
-
-
 # CLASS : Lexer
 # Brief : This class implements the lexer functionality of pascal language
 # Functions:

@@ -128,6 +128,12 @@ class Parser():
             return 9
         return _get_precedence(self.precedence_order)
     
+    ## WRAPPERS ##
+    
+    # run :: [Token] -> AST_Node
+    def run(self, tokens):
+        return self.p_program(tokens)[1]
+    
     ## INIT PARSER ##
     
     # The initial parser that needs to be called for every file/list of tokens that needs to be parsed.
@@ -259,7 +265,7 @@ class Parser():
     # the follow-up parser for function calls [p_function_call]
     # p_fu_function_call :: ([Token], AST_Node) -> ([Token], AST_Node)
     def p_fu_function_call(self, data: Tuple[List[Token],AST_Node]) -> Tuple[List[Token],AST_Node]:
-        new_data = self.parse_until_no_change(data, [self.p_function_call_param,self.p_function_call_first_param])
+        new_data = self.parse_until_no_change(data, [self.p_function_call_param])
         if r_check(new_data[0], *(self.orders['close'])):
             return self.p_closing(new_data)
         else:
@@ -431,61 +437,68 @@ class Parser():
             return ((data[0][len(self.orders['params'][0]):]),data[1])
         return data
     
-    # closing parser for function call [p_fu_function_call]
+    # closing parser for function declaration [p_fu_function]
     # p_function_call_param :: ([Token],AST_Node) -> ([Token], AST_Node)
     def p_function_call_param(self, data: Tuple[List[Token],AST_Node]) -> Tuple[List[Token],AST_Node]:
-        if r_check(data[0],[Token('keyword',',')],[check_token_equal_all]):
-            return self.p_function_call_first_param((data[0][1:],data[1]))
-        return data
-    
-    # closing parser for function call [p_fu_function_call]
-    # p_function_call_first_param :: ([Token],AST_Node) -> ([Token], AST_Node)
-    def p_function_call_first_param(self, data: Tuple[List[Token],AST_Node]) -> Tuple[List[Token],AST_Node]:
-        if r_check(data[0], *(self.orders['close'])):
-            return data
-        
-        if len(data[0]) >= 2 and ((check_token_equal_name(data[0][0], Token('parentheses_open')) or (check_token_equal_name(data[0][1], Token('operator'))))):
-            new_data = self.p_expression((data[0],AST_Parameter('list',[],'expression','expression')))
-            data[1].append(new_data[1])
-            return (new_data[0],data[1])
-        
-        if (r_check(data[0], *(self.orders['f_list']))) or (r_check(data[0], *(self.orders['str_f_list']))) or (r_check(data[0], *(self.orders['digit']))):
-            ast_param = AST_Parameter('list',[], data[0][0].data, data[0][0].name)
-            data[1].append(ast_param)
-            return ((data[0][len(self.orders['f_list'][0]):]),data[1])
+        def inner_p_function_call_param_decorator(f) -> Tuple[List[Token],AST_Node]:
+            def inner(data: Tuple[List[Token],AST_Node]) -> Tuple[List[Token],AST_Node]:
+                if r_check(data[0],[Token('keyword',',')],[check_token_equal_all]):
+                    return f((data[0][1:],data[1]))
+                return f(data)
+            return inner
+        @inner_p_function_call_param_decorator
+        def inner_p_function_call_param(data: Tuple[List[Token],AST_Node]) -> Tuple[List[Token],AST_Node]:
+            if r_check(data[0], *(self.orders['close'])):
+                return data
             
-        return data
+            if len(data[0]) >= 2 and ((check_token_equal_name(data[0][0], Token('parentheses_open')) or (check_token_equal_name(data[0][1], Token('operator'))))):
+                new_data = self.p_expression((data[0],AST_Parameter('list',[],'expression','expression')))
+                data[1].append(new_data[1])
+                return (new_data[0],data[1])
+            
+            if (r_check(data[0], *(self.orders['f_list']))) or (r_check(data[0], *(self.orders['str_f_list']))) or (r_check(data[0], *(self.orders['digit']))):
+                ast_param = AST_Parameter('list',[], data[0][0].data, data[0][0].name)
+                data[1].append(ast_param)
+                return ((data[0][len(self.orders['f_list'][0]):]),data[1])   
+            return data
+        return inner_p_function_call_param(data)
     
+    # closing parser for the function definition [p_fu_function]
     # p_function_def_closing :: ([Token],AST_Node) -> ([Token], AST_Node)
     def p_function_def_closing(self, data: Tuple[List[Token],AST_Node]) -> Tuple[List[Token],AST_Node]:
         if r_check(data[0], *(self.orders['func_close'])):
             return ((data[0][len(self.orders['func_close'][0]):]),data[1])
         return data
     
+    # closing parser for a closing parentheses
     # p_closing :: ([Token],AST_Node) -> ([Token], AST_Node)
     def p_closing(self, data: Tuple[List[Token],AST_Node]) -> Tuple[List[Token],AST_Node]:
         if r_check(data[0], *(self.orders['close'])):
             return ((data[0][len(self.orders['close'][0]):]),data[1])
         return data
     
+    # closing parser for a trailing semicolm
     # p_semicolomn :: ([Token],AST_Node) -> ([Token], AST_Node)
     def p_semicolomn(self, data: Tuple[List[Token],AST_Node]) -> Tuple[List[Token],AST_Node]:
         if r_check(data[0], *(self.orders['semi'])):
             return ((data[0][len(self.orders['semi'][0]):]),data[1])
         return data
     
+    # closing parser for a begin block 
     # p_end :: ([Token],AST_Node) -> ([Token], AST_Node)
     def p_end(self, data: Tuple[List[Token],AST_Node]) -> Tuple[List[Token],AST_Node]:
         if r_check(data[0], *(self.orders['end'])):
             return ((data[0][len(self.orders['end'][0]):]),data[1])
         return data
     
+    # closing parser for the entire program
     # p_eof :: ([Token],AST_Node) -> ([Token], AST_Node)
     def p_eof(self, data: Tuple[List[Token],AST_Node]) -> Tuple[List[Token],AST_Node]:
         if r_check(data[0], *(self.orders['eof'])):
             return ((data[0][len(self.orders['eof'][0]):]),data[1])
         return data
     
+    # closing parser for the function definition [p_fu_function]
     # p_function_def_closing_ret :: ([Token],AST_Node) -> ([Token], AST_Node)
     def p_function_def_closing_ret(self, data: Tuple[List[Token],AST_Node]) -> Tuple[List[Token],AST_Node]:
         if r_check(data[0], *(self.orders['func_ret'])):
@@ -497,6 +510,8 @@ class Parser():
     
     ## PARSER HELPERS ##
     
+    # this parser keeps calling the parsers from the parsers list provided as a parameter until one of them succeeds. 
+    # Then tries again from the start of the parser list untill there is no change in the input data
     # parse_until_no_change :: ([Token], AST_Node) -> [(([Token],AST_Node) -> ([Token],AST_Node]))] -> ([Token], AST_Node)
     def parse_until_no_change(self, data: Tuple[List[Token],AST_Node], parsers: List[Callable[[Tuple[List[Token],AST_Node]],Tuple[List[Token],AST_Node]]]) -> Tuple[List[Token],AST_Node]:
         new_data = self.parse_in_order_stop_at_succes(data, parsers)
@@ -504,12 +519,14 @@ class Parser():
             return new_data
         return self.parse_until_no_change(new_data, parsers)
     
+    # parses using the provided parsers only once in order provided by the parser list
     # parse_in_order :: ([Token], AST_Node) -> [(([Token],AST_Node) -> ([Token],AST_Node]))] -> ([Token], AST_Node)
     def parse_in_order(self, data: Tuple[List[Token],AST_Node], parsers: List[Callable[[Tuple[List[Token],AST_Node]],Tuple[List[Token],AST_Node]]]) -> Tuple[List[Token],AST_Node]:
         parsers.reverse()
         parserall = compose(parsers)
         return parserall(data)
 
+    # parses using the provided parsers only a single time in order provided by the parser list, Directly stops upon succes
     # parse_in_order :: ([Token], AST_Node) -> [(([Token],AST_Node) -> ([Token],AST_Node]))] -> ([Token], AST_Node)
     def parse_in_order_stop_at_succes(self, data: Tuple[List[Token],AST_Node], parsers: List[Callable[[Tuple[List[Token],AST_Node]],Tuple[List[Token],AST_Node]]]) -> Tuple[List[Token],AST_Node]:
         if not len(parsers):
@@ -518,7 +535,9 @@ class Parser():
         if not new_data[0] or len(data[0]) != len(new_data[0]):
             return new_data
         return self.parse_in_order_stop_at_succes(data,parsers[1:])
-        
+    
+    # parsers matching tokens. For example (), everything between the parentheses will be discarded. Nested parentheses will also be discarded.
+    # parse_discard_until_recusive :: ([Token], AST_Node) -> Token -> Token -> int -> ([Token], AST_Node) 
     def parse_discard_until_recusive(self, data: Tuple[List[Token],AST_Node], token_stop: Token, token_start: Token, i: int) -> Tuple[List[Token],AST_Node]:
         if not len(data[0]):
             return data
@@ -530,20 +549,18 @@ class Parser():
             return self.parse_discard_until_recusive((data[0][1:],data[1]),token_stop,token_start,i+1) 
         else:
             return self.parse_discard_until_recusive((data[0][1:],data[1]),token_stop,token_start,i) 
-
-    ## WRAPPERS ##
-    
-    # run :: [Token] -> AST_Node
-    def run(self, tokens):
-        return self.p_program(tokens)[1]
     
     
     ## DEBUG PARSERS ##
 
+    # does nothing returns input
+    # parse_nothing :: ([Token],AST_Node) -> ([Token], AST_Node)
     def parse_nothing(self, data: Tuple[List[Token],AST_Node]) -> Tuple[List[Token],AST_Node]:
-        # temporary parser that parses nothing so to debug existing parsers :)
+        # parser that parses nothing so to debug existing parsers :)
         return data
     
+    # parses until it finds the token then stops without consuming the token
+    # parse_nothing :: ([Token],AST_Node) -> Token -> ([Token], AST_Node)
     def parse_discard_until(self, data: Tuple[List[Token],AST_Node], token: Token) -> Tuple[List[Token],AST_Node]:
         # parser that discards all tokens untill it finds it Token. It will not discard the Token it tries to find
         if not len(data[0]) or data[0][0] == token:
