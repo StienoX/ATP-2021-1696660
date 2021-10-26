@@ -170,7 +170,6 @@ class AST_IfTrue(AST_Node):
     def __init__(self, ast_type, connections):
         super().__init__(ast_type,connections)
 
-    
 class AST_IfFalse(AST_Node):
     def __init__(self, ast_type, connections):
         super().__init__(ast_type,connections)

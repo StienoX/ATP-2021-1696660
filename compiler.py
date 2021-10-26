@@ -44,24 +44,30 @@ class Compiler():
     def c_function_def(self, asts:List[AST_Node], assembly:List[str], labels: dict, scope: dict) -> Tuple[List[AST_Node], List[str]]:
         if (isinstance(asts[0],AST_Function)):
             rslt_d = self.get_declarations_nested(asts[0]) # number of var declarerations 
-            rslt_p = self.get_params(asts[0]) # number of parameters
+            rslt_p:Tuple[List[AST_Var],List[AST_Node]] = self.get_params(asts[0]) # number of parameters
             n_p = len(rslt_p[0])
             n = (len(rslt_d[0]) + n_p)
             rslt = "    push  {" 
             if n <= 4: # when using less then 4 variables we use registers
                 if n > 1:
-                    rslt += "r4, " 
+                    rslt += "r4, "
+                    scope[rslt_p[0][0].parameter_name] = (lambda Rx: "    mov  r4, " + Rx, lambda Rx: "    mov   " + Rx + ", r4")
                 if n > 2:
                     rslt += "r5, "
+                    scope[rslt_p[0][1].parameter_name] = (lambda Rx: "    mov  r5, " + Rx, lambda Rx: "    mov   " + Rx + ", r5")
                 if n > 3:
                     rslt += "r6, "
+                    scope[rslt_p[0][2].parameter_name] = (lambda Rx: "    mov  r6, " + Rx, lambda Rx: "    mov   " + Rx + ", r6")
             if n >= 4:
                 rslt += "r7, "
+                if n == 4:
+                    scope[rslt_p[0][3].parameter_name] = (lambda Rx: "    mov  r7, " + Rx, lambda Rx: "    mov   " + Rx + ", r7")
             rslt += "lr}"
             rslt = [rslt]
             if n > 4: # when using more then 4 variables we use the stack
                 rslt = rslt + ["    sub  sp, sp, #" + str(n*4)]
                 rslt = rslt + ["    add  r7, sp, #0"]
+                #scope[] need to add load and store to the stack
             assembly = assembly + [asts[0].procedure_name + ":"] + rslt
             asts = asts[0].connections + asts
             
