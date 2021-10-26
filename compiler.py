@@ -24,11 +24,11 @@ class Compiler():
         return list(zip(*([rslt] + connection_rslts)))[0]
     
     def run(self):
-        return '\n'.join(compile(self.ast,self.assembly)[1],self.scope,self.labels) # this result needs to be written to a asm file
+        return '\n'.join(compile(self.ast,self.assembly,self.scope,self.labels)[1]) # this result needs to be written to a asm file
     
     def compile(asts, assembly, labels, scope):
         # run each compile function and return the asts and generated assembly.
-        return (asts, assembly)
+        return (asts, assembly, labels, scope)
     
     def c_main(self, asts:List[AST_Node], assembly:List[str], labels: dict, scope: dict) -> Tuple[List[AST_Node], List[str]]:
         if (isinstance(asts[0],AST_Program)):
@@ -67,4 +67,15 @@ class Compiler():
             
     def c_function_call(self, asts:List[AST_Node], assembly:List[str], labels: dict, scope: dict) -> Tuple[List[AST_Node], List[str]]:
         if (isinstance(asts[0],AST_FunctionCall)):
+            pre_result = []
+            rslt = []
             
+            #if arg._type == 'identifier':
+                # load from stack or register use scope.
+            #if arg._type == 'digit':
+                # load const to r+number of param place
+            #if arg._type == 'expression':
+                # call c_expression
+            #if arg._type == 'string':
+                # not supported     
+            params = list(map(lambda function_param: function_param ,asts[0].connections))
