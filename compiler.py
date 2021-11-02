@@ -43,17 +43,19 @@ class Compiler():
     
     
     def c_function_def(self, asts:List[AST_Node], assembly:List[str], labels: dict, scope: dict) -> Tuple[List[AST_Node], List[str]]:
-        def c_vars(self, asts:List[AST_Node], assembly:List[str], labels: dict, scope: dict, n: int, n_p: int, i: int) -> Tuple[List[AST_Node], List[str]]:
+        def c_vars(asts:List[AST_Node], scope: dict, n: int, n_p: int, i: int) -> Tuple[List[AST_Node], List[str]]:
             if (isinstance(asts[0],AST_Var)):
+                if n_p + i >= n: 
+                    return scope
                 if n > 4:
                     scope[asts[0].var_name] = (lambda Rx: "    mov  r"+(n_p+4+i)+", " + Rx, lambda Rx: "    mov   " + Rx + ", r" + (n_p+4+i))
                 else:
                     scope[asts[0].var_name] = (lambda Rx: "    str  " + Rx + ", [r7,#"+(n_p+i)*4+"]",       lambda Rx: "    ldr   " + Rx + ", [r7,#"+(n_p+i)*4+"]")
-                return (asts[1:], assembly, labels, scope)
-            return (asts, assembly, labels, scope)
+                return c_vars(asts[1:], scope, n, n_p, i+1)
+            assert() # this should not be abled to happen since we only provide it with AST_Var's
         if (isinstance(asts[0],AST_Function)):
-            rslt_d = self.get_declarations_nested(asts[0]) # number of var declarations ((nested) forward lookup)
-            rslt_p:Tuple[List[AST_Var],List[AST_Node]] = self.get_params(asts[0]) # number of parameters (forward lookup)
+            rslt_d:Tuple[List[AST_Var],List[AST_Node]] = self.get_declarations_nested(asts[0]) # number of var declarations ((nested) forward lookup)
+            rslt_p = self.get_params(asts[0]) # number of parameters (forward lookup)
             n_p = len(rslt_p[0])
             n = (len(rslt_d[0]) + n_p)
             rslt = "    push  {"
@@ -94,7 +96,8 @@ class Compiler():
                 if n_p >= 4:
                     scope[rslt_p[0][0].parameter_name] = (lambda Rx: "    str  " + Rx + ", [r7, #12]",  lambda Rx: "    ldr   " + Rx + ", [r7, #12]")
                     rslt = rslt + [scope[rslt_p[0][0].parameter_name][0]("r3")]
-                
+            
+            scope = c_vars(rslt_d[0],scope,n,n_p,0) # updating scope for the rest of the variables
                 
             assembly = assembly + [asts[0].procedure_name + ":"] + rslt
             labels[asts[0].procedure_name] = n_p # currently stores num of parameters labels also needs to store loops and if statements. loops, if statements or functions without parameters will contain 0 as num of parameters
