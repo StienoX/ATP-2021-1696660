@@ -39,9 +39,18 @@ class Compiler():
     def c_begin(self, asts:List[AST_Node], assembly:List[str], labels: dict, scope: dict) -> Tuple[List[AST_Node], List[str]]:
         if (isinstance(asts[0],AST_Begin)):
             asts = asts[0].connections + asts  # add child connections to the ast
-        return (asts,assembly)
+        return (asts, assembly, labels, scope)
+    
     
     def c_function_def(self, asts:List[AST_Node], assembly:List[str], labels: dict, scope: dict) -> Tuple[List[AST_Node], List[str]]:
+        def c_vars(self, asts:List[AST_Node], assembly:List[str], labels: dict, scope: dict, n: int, n_p: int, i: int) -> Tuple[List[AST_Node], List[str]]:
+            if (isinstance(asts[0],AST_Var)):
+                if n > 4:
+                    scope[asts[0].var_name] = (lambda Rx: "    mov  r"+(n_p+4+i)+", " + Rx, lambda Rx: "    mov   " + Rx + ", r" + (n_p+4+i))
+                else:
+                    scope[asts[0].var_name] = (lambda Rx: "    str  " + Rx + ", [r7,#"+(n_p+i)*4+"]",       lambda Rx: "    ldr   " + Rx + ", [r7,#"+(n_p+i)*4+"]")
+                return (asts[1:], assembly, labels, scope)
+            return (asts, assembly, labels, scope)
         if (isinstance(asts[0],AST_Function)):
             rslt_d = self.get_declarations_nested(asts[0]) # number of var declarations ((nested) forward lookup)
             rslt_p:Tuple[List[AST_Var],List[AST_Node]] = self.get_params(asts[0]) # number of parameters (forward lookup)
@@ -68,22 +77,22 @@ class Compiler():
                     scope[rslt_p[0][3].parameter_name] = (lambda Rx: "    mov  r7, " + Rx, lambda Rx: "    mov   " + Rx + ", r7")
                     tmp_rslt = tmp_rslt + [scope[rslt_p[0][0].parameter_name][0]("r3")]
             rslt += "lr}"
-            rslt = [rslt]
+            rslt = [rslt] + tmp_rslt
             if n > 4: # when using more then 4 variables we use the stack
                 rslt = rslt + ["    sub  sp, sp, #" + str(n*4)]
                 rslt = rslt + ["    add  r7, sp, #0"] # using add because sp does not support mov
                 #scope[] need to add load and store to the stack
                 if n_p >= 1:
-                    scope[rslt_p[0][0].parameter_name] = (lambda Rx: "    str  "+Rx+", [r7]", lambda Rx: "    ldr   " + Rx + ", [r7]")
+                    scope[rslt_p[0][0].parameter_name] = (lambda Rx: "    str  " + Rx + ", [r7]",       lambda Rx: "    ldr   " + Rx + ", [r7]")
                     rslt = rslt + [scope[rslt_p[0][0].parameter_name][0]("r0")]
                 if n_p >= 2:
-                    scope[rslt_p[0][0].parameter_name] = (lambda Rx: "    str  "+Rx+", [r7, #4]", lambda Rx: "    ldr   " + Rx + ", [r7, #4]")
+                    scope[rslt_p[0][0].parameter_name] = (lambda Rx: "    str  " + Rx + ", [r7, #4]",   lambda Rx: "    ldr   " + Rx + ", [r7, #4]")
                     rslt = rslt + [scope[rslt_p[0][0].parameter_name][0]("r1")]
                 if n_p >= 3:
-                    scope[rslt_p[0][0].parameter_name] = (lambda Rx: "    str  "+Rx+", [r7, #8]", lambda Rx: "    ldr   " + Rx + ", [r7, #8]")
+                    scope[rslt_p[0][0].parameter_name] = (lambda Rx: "    str  " + Rx + ", [r7, #8]",   lambda Rx: "    ldr   " + Rx + ", [r7, #8]")
                     rslt = rslt + [scope[rslt_p[0][0].parameter_name][0]("r2")]
                 if n_p >= 4:
-                    scope[rslt_p[0][0].parameter_name] = (lambda Rx: "    str  "+Rx+", [r7, #12]", lambda Rx: "    ldr   " + Rx + ", [r7, #12]")
+                    scope[rslt_p[0][0].parameter_name] = (lambda Rx: "    str  " + Rx + ", [r7, #12]",  lambda Rx: "    ldr   " + Rx + ", [r7, #12]")
                     rslt = rslt + [scope[rslt_p[0][0].parameter_name][0]("r3")]
                 
                 
@@ -94,7 +103,7 @@ class Compiler():
             # call next compile functions
             
             # TODO
-        return asts, assembly, labels, scope # we are not in a function definition
+        return (asts, assembly, labels, scope) # we are not in a function definition
             
     def c_function_call(self, asts:List[AST_Node], assembly:List[str], labels: dict, scope: dict) -> Tuple[List[AST_Node], List[str]]:
         if (isinstance(asts[0],AST_FunctionCall)):
