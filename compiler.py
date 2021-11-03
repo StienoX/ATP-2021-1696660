@@ -122,3 +122,55 @@ class Compiler():
             #if arg._type == 'string':
                 # not supported
             params = list(map(lambda function_param: function_param ,asts[0].connections))
+            
+    def c_expression(self, asts:List[AST_Node], assembly:List[str], labels: dict, scope: dict) -> Tuple[List[AST_Node], List[str]]:
+        if (isinstance(asts[0],AST_Expression)):
+            def _c_expression(current_node, put, _assembly): # this generates the assembly instructions for the instruction
+                if isinstance(current_node, ExprNode):
+                    if isinstance(current_node.right, ExprLeaf) and isinstance(current_node.left, ExprLeaf) and current_node.left.type == current_node.right.type and current_node.right.type not in ["func_call","var"]:
+                        rslt = 0
+                        if current_node.data == "*":
+                            rslt = int(current_node.right.data) * int(current_node.left.data)
+                        elif current_node.data == "+":
+                            rslt = int(current_node.right.data) + int(current_node.left.data)
+                        elif current_node.data == "-":
+                            rslt = int(current_node.right.data) - int(current_node.left.data)
+                        elif current_node.data == "/":
+                            rslt = int(current_node.right.data) / int(current_node.left.data)
+                        _assembly = ["    mov " + put + ", " + rslt] + _assembly
+                    else:
+                        temp_assembly = ""
+                        if current_node.data == "*":
+                            temp_assembly = "    mul " + put
+                        elif current_node.data == "+":
+                            temp_assembly = "    sum " + put
+                        elif current_node.data == "-":
+                            temp_assembly = "    sub " + put
+                        elif current_node.data == "/":
+                            assert() # not implementing this
+                            temp_assembly = "    mul " + put
+                        
+                        if isinstance(current_node.left, ExprLeaf) and current_node.left.type not in ["func_call","var"]:
+                            temp_assembly = temp_assembly + "r2, #" + str(current_node.left.data)
+                        elif isinstance(current_node.right, ExprLeaf) and current_node.right.type not in ["func_call","var"]:
+                            temp_assembly = temp_assembly + "r1, #" + str(current_node.left.data)
+                        else:
+                            if current_node.data == "*":
+                                _assembly = [temp_assembly + ", r1, r2"] + _assembly
+                            elif current_node.data == "+":
+                                _assembly = [temp_assembly + ", r1, r2"] + _assembly
+                            elif current_node.data == "-":
+                                _assembly = [temp_assembly + ", r1, r2"] + _assembly # might need to swap r1 and r2
+                            elif current_node.data == "/":
+                                assert() # not implementing this
+                                _assembly = [temp_assembly + ", r1, r2"] + _assembly
+                            
+                if isinstance(current_node, ExprLeaf):
+                    pass # execute function or get variable
+            top_node = asts[0].right
+            if (isinstance(top_node, ExprNode)):
+                if top_node.data == ":=": # assignment to var
+                    assembly = assembly + [scope[top_node.left.data][0]]
+            else:
+                return (asts[1:], assembly, labels, scope) # useless expression we dont need to generate any assembly for this since it does not change anything. Example of an useless expression is: (5)
+        return (asts, assembly, labels, scope)
