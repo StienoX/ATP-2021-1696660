@@ -221,15 +221,15 @@ class ExprNode(AST_Node):
             ret += 'r' + self.right.__str__(level+1)
         return ret
     
-    # __eq__ :: ExprNoode -> ExprNode -> bool
+    # __eq__ :: ExprNode -> ExprNode -> bool
     def __eq__(self, other) -> bool:
         return self.precedence == other.precedence
     
-    # __lt__ :: ExprNoode -> ExprNode -> bool
+    # __lt__ :: ExprNode -> ExprNode -> bool
     def __lt__(self, other) -> bool:
         return self.precedence < other.precedence
     
-    # __gt__ :: ExprNoode -> ExprNode -> bool
+    # __gt__ :: ExprNode -> ExprNode -> bool
     def __gt__(self, other) -> bool:
         return self.precedence > other.precedence
     
