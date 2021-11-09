@@ -9,6 +9,16 @@ class Compiler():
         self.labels = {} # dict stores all the labels generated in assembly
         self.scope = {} # dict stores the current variables as follows: (store function,load function) example call: assembly_instruction = scope[var_name][1]("r0") This will store the contents of r0 somewhere safe
         
+    # generate_new_label :: dict -> Tuple(str,dict)
+    def generate_new_label(self, labels: dict) -> Tuple[str,dict]:
+        def new_label(label_name, labels):
+            if label_name in labels:
+                return new_label("L" + str((int(label_name[1:]) + 1)))
+            return label_name
+        label_name = new_label("L1",labels)
+        labels[label_name] = 0
+        return (label_name,labels)
+    
     # get_declarations :: [AST_Node] -> ([AST_Node],[AST_Node])
     def get_declarations(self, asts:List[AST_Node]) -> Tuple[List[AST_Node]]:
         return split_list_if(asts, lambda x: isinstance(x, AST_Var))
@@ -98,7 +108,7 @@ class Compiler():
                     rslt = rslt + [scope[rslt_p[0][0].parameter_name][0]("r3")]
             
             scope = c_vars(rslt_d[0],scope,n,n_p,0) # updating scope for the rest of the variables
-                
+            
             assembly = assembly + [asts[0].procedure_name + ":"] + rslt
             labels[asts[0].procedure_name] = n_p # currently stores num of parameters labels also needs to store loops and if statements. loops, if statements or functions without parameters will contain 0 as num of parameters
             asts = asts[0].connections + asts
@@ -125,10 +135,13 @@ class Compiler():
             
     def c_expression(self, asts:List[AST_Node], assembly:List[str], labels: dict, scope: dict) -> Tuple[List[AST_Node], List[str]]:
         if (isinstance(asts[0],AST_Expression)):
-            def _c_expression(current_node, put, _assembly): # this generates the assembly instructions for the instruction
+            #r1 = left
+            #r2 = right
+            def _c_expression(current_node, return_register, _assembly): # this generates the assembly instructions for the instruction
                 if isinstance(current_node, ExprNode):
                     if isinstance(current_node.right, ExprLeaf) and isinstance(current_node.left, ExprLeaf) and current_node.left.type == current_node.right.type and current_node.right.type not in ["func_call","var"]:
                         rslt = 0
+                        #optimize by precalculating result of const value's when possible
                         if current_node.data == "*":
                             rslt = int(current_node.right.data) * int(current_node.left.data)
                         elif current_node.data == "+":
@@ -137,40 +150,53 @@ class Compiler():
                             rslt = int(current_node.right.data) - int(current_node.left.data)
                         elif current_node.data == "/":
                             rslt = int(current_node.right.data) / int(current_node.left.data)
-                        _assembly = ["    mov " + put + ", " + rslt] + _assembly
+                        _assembly = ["    mov " + return_register + ", " + rslt] + _assembly
+                        return _assembly
                     else:
+                        
+                        # get the instruction
                         temp_assembly = ""
                         if current_node.data == "*":
-                            temp_assembly = "    mul " + put
+                            temp_assembly = "    mul " + return_register
                         elif current_node.data == "+":
-                            temp_assembly = "    sum " + put
+                            temp_assembly = "    sum " + return_register
                         elif current_node.data == "-":
-                            temp_assembly = "    sub " + put
+                            temp_assembly = "    sub " + return_register
+                        
                         elif current_node.data == "/":
                             assert() # not implementing this
-                            temp_assembly = "    mul " + put
+                            temp_assembly = "    mul " + return_register
+                            
                         
-                        if isinstance(current_node.left, ExprLeaf) and current_node.left.type not in ["func_call","var"]:
+                        if isinstance(current_node.left, ExprLeaf) and current_node.left.type not in ["func_call","var"]: # left side is a const value
                             temp_assembly = temp_assembly + "r2, #" + str(current_node.left.data)
+                            _assembly = temp_assembly + _assembly
+                            return _c_expression(current_node.right,"r2",_assembly)
+                            
                         elif isinstance(current_node.right, ExprLeaf) and current_node.right.type not in ["func_call","var"]:
-                            temp_assembly = temp_assembly + "r1, #" + str(current_node.left.data)
+                            temp_assembly = temp_assembly + "r1, #" + str(current_node.right.data)
+                            _assembly = temp_assembly + _assembly
+                            return _c_expression(current_node.left,"r1",_assembly)
+                        
                         else:
-                            if current_node.data == "*":
-                                _assembly = [temp_assembly + ", r1, r2"] + _assembly
-                            elif current_node.data == "+":
-                                _assembly = [temp_assembly + ", r1, r2"] + _assembly
-                            elif current_node.data == "-":
-                                _assembly = [temp_assembly + ", r1, r2"] + _assembly # might need to swap r1 and r2
-                            elif current_node.data == "/":
-                                assert() # not implementing this
-                                _assembly = [temp_assembly + ", r1, r2"] + _assembly
+                            _assembly = [temp_assembly + ", r1, r2"] + _assembly
+                            _assembly = _c_expression(current_node.left, "r2", _assembly)
+                            _assembly = _c_expression(current_node.right, "r1", _assembly)
+                            return _assembly
                             
                 if isinstance(current_node, ExprLeaf):
                     pass # execute function or get variable
+     
+
+
             top_node = asts[0].right
             if (isinstance(top_node, ExprNode)):
                 if top_node.data == ":=": # assignment to var
-                    assembly = assembly + [scope[top_node.left.data][0]]
+                    assembly = assembly + _c_expression(top_node.right,"r0",[]) + [scope[top_node.left.data][0]("r0")]
+                    
+                elif top_node.data == "=": # comparison
+                    assembly = assembly + ["    cmp r1, r2"] # Need to check for consts vars (like x = 4)
+                        
             else:
                 return (asts[1:], assembly, labels, scope) # useless expression we dont need to generate any assembly for this since it does not change anything. Example of an useless expression is: (5)
         return (asts, assembly, labels, scope)
