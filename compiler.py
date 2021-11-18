@@ -28,6 +28,28 @@ class Compiler():
         return split_list_if(asts, lambda x: isinstance(x, AST_FunctionParameter))
     
     # get_declarations_nested :: [AST_Node] -> ([AST_Node],[AST_Node])
+    def get_loads(self,asts:List[AST_Node]) -> int:
+        def _get_expressionAST(asts:List[AST_Node]) -> List[AST_Var]:
+            rslt = split_list_if(asts, lambda x: isinstance(x, AST_Expression))
+            connection_rslts:List[Tuple[List[AST_Node],List[AST_Node]]] = list(map(_get_expressionAST,rslt[1]))
+            return list(zip(*([rslt] + connection_rslts)))[0]
+        expressions = _get_expressionAST(asts)
+        def _count(expression:Union[ExprNode,ExprLeaf]) -> int:
+            if isinstance(expression.right,ExprNode) and isinstance(expression.left,ExprNode):
+                i = 1
+                i += _count(expression.right)
+                i += _count(expression.left)
+                return i
+            elif isinstance(expression.right,ExprNode):
+                return _count(expression.right)
+            elif isinstance(expression.left,ExprNode):
+                return _count(expression.left)
+            else:
+                return 0  
+        
+        return max(list(map(lambda top_node: _count(top_node.right),expressions)))
+        
+    # get_declarations_nested :: [AST_Node] -> ([AST_Node],[AST_Node])
     def get_declarations_nested(self, asts:List[AST_Node]) -> List[AST_Var]:
         rslt = split_list_if(asts, lambda x: isinstance(x, AST_Var))
         connection_rslts:List[Tuple[List[AST_Node],List[AST_Node]]] = list(map(self.get_declarations_nested,rslt[1]))
@@ -53,21 +75,22 @@ class Compiler():
     
     
     def c_function_def(self, asts:List[AST_Node], assembly:List[str], labels: dict, scope: dict) -> Tuple[List[AST_Node], List[str]]:
-        def c_vars(asts:List[AST_Node], scope: dict, n: int, n_p: int, i: int) -> Tuple[List[AST_Node], List[str]]:
+        def c_vars(asts:List[AST_Node], scope: dict, n: int, n_p: int, n_e: int,i: int) -> Tuple[List[AST_Node], List[str]]:
             if (isinstance(asts[0],AST_Var)):
-                if n_p + i >= n: 
+                if n_p + n_e + i >= n: 
                     return scope
                 if n > 4:
                     scope[asts[0].var_name] = (lambda Rx: "    mov  r"+(n_p+4+i)+", " + Rx, lambda Rx: "    mov   " + Rx + ", r" + (n_p+4+i))
                 else:
                     scope[asts[0].var_name] = (lambda Rx: "    str  " + Rx + ", [r7,#"+(n_p+i)*4+"]",       lambda Rx: "    ldr   " + Rx + ", [r7,#"+(n_p+i)*4+"]")
-                return c_vars(asts[1:], scope, n, n_p, i+1)
+                return c_vars(asts[1:], scope, n, n_p, n_e, i+1)
             assert() # this should not be abled to happen since we only provide it with AST_Var's
         if (isinstance(asts[0],AST_Function)):
             rslt_d:Tuple[List[AST_Var],List[AST_Node]] = self.get_declarations_nested(asts[0]) # number of var declarations ((nested) forward lookup)
             rslt_p = self.get_params(asts[0]) # number of parameters (forward lookup)
             n_p = len(rslt_p[0])
-            n = (len(rslt_d[0]) + n_p)
+            n_e = self.get_loads(asts[0])
+            n = (len(rslt_d[0]) + n_p + n_e)
             rslt = "    push  {"
             tmp_rslt = []
             if n <= 4: # when using less then 4 variables we use registers
@@ -107,7 +130,7 @@ class Compiler():
                     scope[rslt_p[0][0].parameter_name] = (lambda Rx: "    str  " + Rx + ", [r7, #12]",  lambda Rx: "    ldr   " + Rx + ", [r7, #12]")
                     rslt = rslt + [scope[rslt_p[0][0].parameter_name][0]("r3")]
             
-            scope = c_vars(rslt_d[0],scope,n,n_p,0) # updating scope for the rest of the variables
+            scope = c_vars(rslt_d[0],scope,n,n_p,n_e,0) # updating scope for the rest of the variables
             
             assembly = assembly + [asts[0].procedure_name + ":"] + rslt
             labels[asts[0].procedure_name] = n_p # currently stores num of parameters labels also needs to store loops and if statements. loops, if statements or functions without parameters will contain 0 as num of parameters
@@ -165,7 +188,7 @@ class Compiler():
                         
                         elif current_node.data == "/":
                             assert() # not implementing this
-                            temp_assembly = "    mul " + return_register
+                            temp_assembly = "  ? div " + return_register
                             
                         
                         if isinstance(current_node.left, ExprLeaf) and current_node.left.type not in ["func_call","var"]: # left side is a const value
