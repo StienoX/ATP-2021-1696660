@@ -77,7 +77,7 @@ class Compiler():
     def c_function_def(self, asts:List[AST_Node], assembly:List[str], labels: dict, scope: dict) -> Tuple[List[AST_Node], List[str]]:
         def c_vars(asts:List[AST_Node], scope: dict, n: int, n_p: int, n_e: int,i: int) -> Tuple[List[AST_Node], List[str]]:
             if (isinstance(asts[0],AST_Var)):
-                if n_p + n_e + i >= n: 
+                if n_p + i >= n - n_e: 
                     return scope
                 if n > 4:
                     scope[asts[0].var_name] = (lambda Rx: "    mov  r"+(n_p+4+i)+", " + Rx, lambda Rx: "    mov   " + Rx + ", r" + (n_p+4+i))
@@ -85,6 +85,16 @@ class Compiler():
                     scope[asts[0].var_name] = (lambda Rx: "    str  " + Rx + ", [r7,#"+(n_p+i)*4+"]",       lambda Rx: "    ldr   " + Rx + ", [r7,#"+(n_p+i)*4+"]")
                 return c_vars(asts[1:], scope, n, n_p, n_e, i+1)
             assert() # this should not be abled to happen since we only provide it with AST_Var's
+            
+        def c_expression(scope: dict, n: int, n_p: int, n_e: int,i: int) -> Tuple[List[AST_Node], List[str]]:
+            if n_p + n_e + i >= n: 
+                return scope
+            if n > 4:
+                scope[str("E"+str(i))] = (lambda Rx: "    mov  r"+(n_p+n_e+4+i)+", " + Rx, lambda Rx: "    mov   " + Rx + ", r" + (n_p+n_e+4+i))
+            else:
+                scope[str("E"+str(i))] = (lambda Rx: "    str  " + Rx + ", [r7,#"+(n_p+n_e+i)*4+"]",       lambda Rx: "    ldr   " + Rx + ", [r7,#"+(n_p+n_e+i)*4+"]")
+            return c_expression(asts[1:], scope, n, n_p, n_e, i+1)
+            
         if (isinstance(asts[0],AST_Function)):
             rslt_d:Tuple[List[AST_Var],List[AST_Node]] = self.get_declarations_nested(asts[0]) # number of var declarations ((nested) forward lookup)
             rslt_p = self.get_params(asts[0]) # number of parameters (forward lookup)
@@ -130,8 +140,8 @@ class Compiler():
                     scope[rslt_p[0][0].parameter_name] = (lambda Rx: "    str  " + Rx + ", [r7, #12]",  lambda Rx: "    ldr   " + Rx + ", [r7, #12]")
                     rslt = rslt + [scope[rslt_p[0][0].parameter_name][0]("r3")]
             
-            scope = c_vars(rslt_d[0],scope,n,n_p,n_e,0) # updating scope for the rest of the variables
-            
+            scope = c_vars(rslt_d[0],scope,n,n_p,n_e,0) # updating scope for the variables
+            scope = c_expression(scope,n,n_p,n_e,0) # uppdating scope for the expression stores/loads when an operator has an operator for both childs
             assembly = assembly + [asts[0].procedure_name + ":"] + rslt
             labels[asts[0].procedure_name] = n_p # currently stores num of parameters labels also needs to store loops and if statements. loops, if statements or functions without parameters will contain 0 as num of parameters
             asts = asts[0].connections + asts
@@ -189,6 +199,8 @@ class Compiler():
                         elif current_node.data == "/":
                             assert() # not implementing this
                             temp_assembly = "  ? div " + return_register
+                        else:
+                            assert() # unknown/unexpected operator
                             
                         
                         if isinstance(current_node.left, ExprLeaf) and current_node.left.type not in ["func_call","var"]: # left side is a const value
@@ -204,6 +216,7 @@ class Compiler():
                         else:
                             _assembly = [temp_assembly + ", r1, r2"] + _assembly
                             _assembly = _c_expression(current_node.left, "r2", _assembly)
+                            # store to stack / register
                             _assembly = _c_expression(current_node.right, "r1", _assembly)
                             return _assembly
                             
