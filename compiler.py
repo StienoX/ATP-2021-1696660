@@ -217,9 +217,12 @@ class Compiler():
                         else:
                             _assembly = [temp_assembly + ", r1, r2"] + _assembly
                             _assembly = _c_expression(current_node.left, "r2", _assembly)
+                            #store[0] load[1]
                             # store to stack / register
+                            _assembly = scope["E"+str(current_node.e_value)][0] + _assembly
                             _assembly = _c_expression(current_node.right, "r1", _assembly)
                             # load from stack / register
+                            _assembly = scope["E"+str(current_node.e_value)][1] + _assembly
                             return _assembly
                             
                 if isinstance(current_node, ExprLeaf):
