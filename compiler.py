@@ -34,18 +34,19 @@ class Compiler():
             connection_rslts:List[Tuple[List[AST_Node],List[AST_Node]]] = list(map(_get_expressionAST,rslt[1]))
             return list(zip(*([rslt] + connection_rslts)))[0]
         expressions = _get_expressionAST(asts)
-        def _count(expression:Union[ExprNode,ExprLeaf]) -> int:
+        def _count(expression:Union[ExprNode,ExprLeaf], i = 0) -> int:
             if isinstance(expression.right,ExprNode) and isinstance(expression.left,ExprNode):
-                i = 1
-                i += _count(expression.right)
-                i += _count(expression.left)
+                i += 1
+                i += _count(expression.left, i) - i # calculate diff and add to i
+                i += _count(expression.right, i) - i
+                expression.e_value = i # sets the depth of the node in the tree which to use within the scope
                 return i
             elif isinstance(expression.right,ExprNode):
-                return _count(expression.right)
+                return _count(expression.right, i)
             elif isinstance(expression.left,ExprNode):
-                return _count(expression.left)
+                return _count(expression.left, i)
             else:
-                return 0  
+                return i
         
         return max(list(map(lambda top_node: _count(top_node.right),expressions)))
         
@@ -218,6 +219,7 @@ class Compiler():
                             _assembly = _c_expression(current_node.left, "r2", _assembly)
                             # store to stack / register
                             _assembly = _c_expression(current_node.right, "r1", _assembly)
+                            # load from stack / register
                             return _assembly
                             
                 if isinstance(current_node, ExprLeaf):

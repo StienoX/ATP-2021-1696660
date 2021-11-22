@@ -211,6 +211,7 @@ class ExprNode(AST_Node):
         self.precedence = precedence
         self.left: Union[None, ExprNode, ExprLeaf] = None
         self.right: Union[None, ExprNode, ExprLeaf] = None
+        self.e_value: int = 0
     
     # __str__ :: str
     def __str__(self, level=0) -> str:
