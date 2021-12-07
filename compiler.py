@@ -15,9 +15,10 @@ class Compiler():
     def test(self, ast):
         ast_head = ast[0]
         if isinstance(ast_head, AST_Begin):
-            print(self.get_loads(ast_head))
+            print(self.get_loads(ast_head)) 
+            print(len(self.get_declarations_nested(ast_head)))
         else:
-            return self.test(ast[1:])
+            return self.test(ast[1:]) # skip till main
         return "DONE"
     # generate_new_label :: dict -> Tuple(str,dict)
     def generate_new_label(self, labels: dict) -> Tuple[str,dict]:
@@ -61,7 +62,7 @@ class Compiler():
         
     # get_declarations_nested :: [AST_Node] -> ([AST_Node],[AST_Node])
     def get_declarations_nested(self, asts:List[AST_Node]) -> List[AST_Var]:
-        rslt = split_list_if(asts, lambda x: isinstance(x, AST_Expression))
+        rslt = split_list_if(asts, lambda x: isinstance(x, AST_Var))
         return functools.reduce(lambda x, y: x + y, list(map(self.get_declarations_nested,rslt[1])), rslt[0])
     
     def run(self):
