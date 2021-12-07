@@ -1,14 +1,24 @@
 from utils import *
 
 
-#
+# 
 class Compiler():
     def __init__(self, ast: AST_Program):
         self.ast = ast
         self.assembly: List[str] = []
         self.labels = {} # dict stores all the labels generated in assembly
         self.scope = {} # dict stores the current variables as follows: (store function,load function) example call: assembly_instruction = scope[var_name][1]("r0") This will store the contents of r0 somewhere safe
-        
+    
+    
+    
+    # a tempory test function that will only be used for debugging
+    def test(self, ast):
+        ast_head = ast[0]
+        if isinstance(ast_head, AST_Begin):
+            print(self.get_loads(ast_head))
+        else:
+            return self.test(ast[1:])
+        return "DONE"
     # generate_new_label :: dict -> Tuple(str,dict)
     def generate_new_label(self, labels: dict) -> Tuple[str,dict]:
         def new_label(label_name, labels):
@@ -31,8 +41,7 @@ class Compiler():
     def get_loads(self,asts:List[AST_Node]) -> int:
         def _get_expressionAST(asts:List[AST_Node]) -> List[AST_Var]:
             rslt = split_list_if(asts, lambda x: isinstance(x, AST_Expression))
-            connection_rslts:List[Tuple[List[AST_Node],List[AST_Node]]] = list(map(_get_expressionAST,rslt[1]))
-            return list(zip(*([rslt] + connection_rslts)))[0]
+            return functools.reduce(lambda x, y: x + y, list(map(_get_expressionAST,rslt[1])), rslt[0])
         expressions = _get_expressionAST(asts)
         def _count(expression:Union[ExprNode,ExprLeaf], i = 0) -> int:
             if isinstance(expression.right,ExprNode) and isinstance(expression.left,ExprNode):
@@ -52,9 +61,8 @@ class Compiler():
         
     # get_declarations_nested :: [AST_Node] -> ([AST_Node],[AST_Node])
     def get_declarations_nested(self, asts:List[AST_Node]) -> List[AST_Var]:
-        rslt = split_list_if(asts, lambda x: isinstance(x, AST_Var))
-        connection_rslts:List[Tuple[List[AST_Node],List[AST_Node]]] = list(map(self.get_declarations_nested,rslt[1]))
-        return list(zip(*([rslt] + connection_rslts)))[0]
+        rslt = split_list_if(asts, lambda x: isinstance(x, AST_Expression))
+        return functools.reduce(lambda x, y: x + y, list(map(self.get_declarations_nested,rslt[1])), rslt[0])
     
     def run(self):
         return '\n'.join(compile(self.ast,self.assembly,self.scope,self.labels)[1]) # this result needs to be written to a asm file
@@ -78,7 +86,7 @@ class Compiler():
     def c_function_def(self, asts:List[AST_Node], assembly:List[str], labels: dict, scope: dict) -> Tuple[List[AST_Node], List[str]]:
         def c_vars(asts:List[AST_Node], scope: dict, n: int, n_p: int, n_e: int,i: int) -> Tuple[List[AST_Node], List[str]]:
             if (isinstance(asts[0],AST_Var)):
-                if n_p + i >= n - n_e: 
+                if n_p + i >= n - n_e:
                     return scope
                 if n > 4:
                     scope[asts[0].var_name] = (lambda Rx: "    mov  r"+(n_p+4+i)+", " + Rx, lambda Rx: "    mov   " + Rx + ", r" + (n_p+4+i))
@@ -150,6 +158,7 @@ class Compiler():
             # call next compile functions
             
             # TODO
+            return (asts, assembly, labels, scope)
         return (asts, assembly, labels, scope) # we are not in a function definition
             
     def c_function_call(self, asts:List[AST_Node], assembly:List[str], labels: dict, scope: dict) -> Tuple[List[AST_Node], List[str]]:
@@ -208,21 +217,31 @@ class Compiler():
                             temp_assembly = temp_assembly + "r2, #" + str(current_node.left.data)
                             _assembly = temp_assembly + _assembly
                             return _c_expression(current_node.right,"r2",_assembly)
-                            
+                        
+                        elif isinstance(current_node.left, ExprLeaf) and current_node.left.type in ["func_call","var"]: # WIP
+                            temp_assembly = temp_assembly + "r2, #" + str(current_node.left.data)
+                            _assembly = temp_assembly + _assembly
+                            return _c_expression(current_node.left,"r2",_assembly)
+                           
                         elif isinstance(current_node.right, ExprLeaf) and current_node.right.type not in ["func_call","var"]:
+                            temp_assembly = temp_assembly + "r1, #" + str(current_node.right.data)
+                            _assembly = temp_assembly + _assembly
+                            return _c_expression(current_node.left,"r1",_assembly)
+                        
+                        elif isinstance(current_node.right, ExprLeaf) and current_node.right.type in ["func_call","var"]: # WIP
                             temp_assembly = temp_assembly + "r1, #" + str(current_node.right.data)
                             _assembly = temp_assembly + _assembly
                             return _c_expression(current_node.left,"r1",_assembly)
                         
                         else:
                             _assembly = [temp_assembly + ", r1, r2"] + _assembly
-                            _assembly = _c_expression(current_node.left, "r2", _assembly)
+                            _assembly = _c_expression(current_node.left, "r1", _assembly)
                             #store[0] load[1]
                             # store to stack / register
-                            _assembly = scope["E"+str(current_node.e_value)][0] + _assembly
-                            _assembly = _c_expression(current_node.right, "r1", _assembly)
+                            _assembly = scope["E"+str(current_node.e_value)][0]("r1") + _assembly
+                            _assembly = _c_expression(current_node.right, "r2", _assembly)
                             # load from stack / register
-                            _assembly = scope["E"+str(current_node.e_value)][1] + _assembly
+                            _assembly = scope["E"+str(current_node.e_value)][1]("r1") + _assembly
                             return _assembly
                             
                 if isinstance(current_node, ExprLeaf):
