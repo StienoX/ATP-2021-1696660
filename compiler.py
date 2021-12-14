@@ -14,9 +14,11 @@ class Compiler():
     # a tempory test function that will only be used for debugging
     def test(self, ast):
         ast_head = ast[0]
-        if isinstance(ast_head, AST_Begin):
-            print(self.get_loads(ast_head)) 
-            print(len(self.get_declarations_nested(ast_head)))
+        if isinstance(ast_head, AST_Function):
+            print(ast_head.connections)
+            print(self.c_function_def([ast_head], [], {}, {}))
+            #print(self.get_loads(ast_head)) 
+            #print(len(self.get_declarations_nested(ast_head)))
         else:
             return self.test(ast[1:]) # skip till main
         return "DONE"
@@ -57,8 +59,8 @@ class Compiler():
                 return _count(expression.left, i)
             else:
                 return i
-        
-        return max(list(map(lambda top_node: _count(top_node.right),expressions)))
+        lst = list(map(lambda top_node: _count(top_node.right),expressions))
+        return max(lst) if lst else 0
         
     # get_declarations_nested :: [AST_Node] -> ([AST_Node],[AST_Node])
     def get_declarations_nested(self, asts:List[AST_Node]) -> List[AST_Var]:
@@ -104,13 +106,12 @@ class Compiler():
             else:
                 scope[str("E"+str(i))] = (lambda Rx: "    str  " + Rx + ", [r7,#"+(n_p+n_e+i)*4+"]",       lambda Rx: "    ldr   " + Rx + ", [r7,#"+(n_p+n_e+i)*4+"]")
             return c_expression(asts[1:], scope, n, n_p, n_e, i+1)
-            
         if (isinstance(asts[0],AST_Function)):
-            rslt_d:Tuple[List[AST_Var],List[AST_Node]] = self.get_declarations_nested(asts[0]) # number of var declarations ((nested) forward lookup)
+            rslt_d:List[AST_Var] = self.get_declarations_nested(asts[0]) # number of var declarations ((nested) forward lookup)
             rslt_p = self.get_params(asts[0]) # number of parameters (forward lookup)
             n_p = len(rslt_p[0])
             n_e = self.get_loads(asts[0])
-            n = (len(rslt_d[0]) + n_p + n_e)
+            n = (len(rslt_d) + n_p + n_e)
             rslt = "    push  {"
             tmp_rslt = []
             if n <= 4: # when using less then 4 variables we use registers
@@ -150,7 +151,7 @@ class Compiler():
                     scope[rslt_p[0][0].parameter_name] = (lambda Rx: "    str  " + Rx + ", [r7, #12]",  lambda Rx: "    ldr   " + Rx + ", [r7, #12]")
                     rslt = rslt + [scope[rslt_p[0][0].parameter_name][0]("r3")]
             
-            scope = c_vars(rslt_d[0],scope,n,n_p,n_e,0) # updating scope for the variables
+            scope = c_vars(rslt_d,scope,n,n_p,n_e,0) if rslt_d else scope # updating scope for the variables
             scope = c_expression(scope,n,n_p,n_e,0) # uppdating scope for the expression stores/loads when an operator has an operator for both childs
             assembly = assembly + [asts[0].procedure_name + ":"] + rslt
             labels[asts[0].procedure_name] = n_p # currently stores num of parameters labels also needs to store loops and if statements. loops, if statements or functions without parameters will contain 0 as num of parameters
@@ -194,7 +195,7 @@ class Compiler():
                             rslt = int(current_node.right.data) - int(current_node.left.data)
                         elif current_node.data == "/":
                             rslt = int(current_node.right.data) / int(current_node.left.data)
-                        _assembly = ["    mov " + return_register + ", " + rslt] + _assembly
+                        _assembly = ["    mov " + return_register + ", #" + str(rslt)] + _assembly
                         return _assembly
                     else:
                         
@@ -216,22 +217,22 @@ class Compiler():
                         
                         if isinstance(current_node.left, ExprLeaf) and current_node.left.type not in ["func_call","var"]: # left side is a const value
                             temp_assembly = temp_assembly + "r2, #" + str(current_node.left.data)
-                            _assembly = temp_assembly + _assembly
+                            _assembly = [temp_assembly] + _assembly
                             return _c_expression(current_node.right,"r2",_assembly)
                         
-                        elif isinstance(current_node.left, ExprLeaf) and current_node.left.type in ["func_call","var"]: # WIP
+                        elif isinstance(current_node.left, ExprLeaf) and current_node.left.type == "var":
                             temp_assembly = temp_assembly + "r2, #" + str(current_node.left.data)
-                            _assembly = temp_assembly + _assembly
+                            _assembly = [temp_assembly] + _assembly
                             return _c_expression(current_node.left,"r2",_assembly)
                            
                         elif isinstance(current_node.right, ExprLeaf) and current_node.right.type not in ["func_call","var"]:
                             temp_assembly = temp_assembly + "r1, #" + str(current_node.right.data)
-                            _assembly = temp_assembly + _assembly
+                            _assembly = [temp_assembly] + _assembly
                             return _c_expression(current_node.left,"r1",_assembly)
                         
-                        elif isinstance(current_node.right, ExprLeaf) and current_node.right.type in ["func_call","var"]: # WIP
+                        elif isinstance(current_node.right, ExprLeaf) and current_node.right.type == "var":
                             temp_assembly = temp_assembly + "r1, #" + str(current_node.right.data)
-                            _assembly = temp_assembly + _assembly
+                            _assembly = [temp_assembly] + _assembly
                             return _c_expression(current_node.left,"r1",_assembly)
                         
                         else:
