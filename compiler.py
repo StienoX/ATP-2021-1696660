@@ -88,7 +88,7 @@ class Compiler():
     
     def c_function_def(self, asts:List[AST_Node], assembly:List[str], labels: dict, scope: dict) -> Tuple[List[AST_Node], List[str]]:
         def c_vars(asts:List[AST_Node], scope: dict, n: int, n_p: int, n_e: int,i: int) -> Tuple[List[AST_Node], List[str]]:
-            if (isinstance(asts[0],AST_Var)):
+            if asts and (isinstance(asts[0],AST_Var)):
                 if n_p + i >= n - n_e:
                     return scope
                 if n > 4:
@@ -96,7 +96,7 @@ class Compiler():
                 else:
                     scope[asts[0].var_name] = (lambda Rx: "    str  " + Rx + ", [r7,#"+(n_p+i)*4+"]",       lambda Rx: "    ldr   " + Rx + ", [r7,#"+(n_p+i)*4+"]")
                 return c_vars(asts[1:], scope, n, n_p, n_e, i+1)
-            assert() # this should not be abled to happen since we only provide it with AST_Var's
+            return scope
             
         def c_expression(scope: dict, n: int, n_p: int, n_e: int,i: int) -> Tuple[List[AST_Node], List[str]]:
             if n_p + n_e + i >= n: 
@@ -105,38 +105,29 @@ class Compiler():
                 scope[str("E"+str(i))] = (lambda Rx: "    mov  r"+(n_p+n_e+4+i)+", " + Rx, lambda Rx: "    mov   " + Rx + ", r" + (n_p+n_e+4+i))
             else:
                 scope[str("E"+str(i))] = (lambda Rx: "    str  " + Rx + ", [r7,#"+(n_p+n_e+i)*4+"]",       lambda Rx: "    ldr   " + Rx + ", [r7,#"+(n_p+n_e+i)*4+"]")
-            return c_expression(asts[1:], scope, n, n_p, n_e, i+1)
+            return c_expression(scope, n, n_p, n_e, i+1)
         if (isinstance(asts[0],AST_Function)):
             rslt_d:List[AST_Var] = self.get_declarations_nested(asts[0]) # number of var declarations ((nested) forward lookup)
             rslt_p = self.get_params(asts[0]) # number of parameters (forward lookup)
             n_p = len(rslt_p[0])
             n_e = self.get_loads(asts[0])
             n = (len(rslt_d) + n_p + n_e)
-            rslt = "    push  {"
+            rslt = "    push  { r7, lr}"
             tmp_rslt = []
-            if n <= 4: # when using less then 4 variables we use registers
+            if n <= 3: # when using less then 3 variables we use registers (one for storing lr)
                 if n_p >= 1:
-                    rslt += "r4, "
                     scope[rslt_p[0][0].parameter_name] = (lambda Rx: "    mov  r4, " + Rx, lambda Rx: "    mov   " + Rx + ", r4")
                     tmp_rslt = tmp_rslt + [scope[rslt_p[0][0].parameter_name][0]("r0")]
                 if n_p >= 2:
-                    rslt += "r5, "
                     scope[rslt_p[0][1].parameter_name] = (lambda Rx: "    mov  r5, " + Rx, lambda Rx: "    mov   " + Rx + ", r5")
                     tmp_rslt = tmp_rslt + [scope[rslt_p[0][0].parameter_name][0]("r1")]
                 if n_p >= 3:
-                    rslt += "r6, "
                     scope[rslt_p[0][2].parameter_name] = (lambda Rx: "    mov  r6, " + Rx, lambda Rx: "    mov   " + Rx + ", r6")
                     tmp_rslt = tmp_rslt + [scope[rslt_p[0][0].parameter_name][0]("r2")]
-            if n >= 4:
-                rslt += "r7, " # we always allocate r7 either for stack offset use or to store the 4th parameter/var
-                if n == 4 and n_p == 4:
-                    scope[rslt_p[0][3].parameter_name] = (lambda Rx: "    mov  r7, " + Rx, lambda Rx: "    mov   " + Rx + ", r7")
-                    tmp_rslt = tmp_rslt + [scope[rslt_p[0][0].parameter_name][0]("r3")]
-            rslt += "lr}"
             rslt = [rslt] + tmp_rslt
-            if n > 4: # when using more then 4 variables we use the stack
+            if n > 3: # when using more then 4 variables we use the stack
                 rslt = rslt + ["    sub  sp, sp, #" + str(n*4)]
-                rslt = rslt + ["    add  r7, sp, #0"] # using add because sp does not support mov
+                rslt = rslt + ["    add  r4, sp, #0"] # using add because sp does not support mov
                 #scope[] need to add load and store to the stack
                 if n_p >= 1:
                     scope[rslt_p[0][0].parameter_name] = (lambda Rx: "    str  " + Rx + ", [r7]",       lambda Rx: "    ldr   " + Rx + ", [r7]")
@@ -151,8 +142,8 @@ class Compiler():
                     scope[rslt_p[0][0].parameter_name] = (lambda Rx: "    str  " + Rx + ", [r7, #12]",  lambda Rx: "    ldr   " + Rx + ", [r7, #12]")
                     rslt = rslt + [scope[rslt_p[0][0].parameter_name][0]("r3")]
             
-            scope = c_vars(rslt_d,scope,n,n_p,n_e,0) if rslt_d else scope # updating scope for the variables
-            scope = c_expression(scope,n,n_p,n_e,0) # uppdating scope for the expression stores/loads when an operator has an operator for both childs
+            scope = c_vars(rslt_d,scope,n,n_p,n_e,0) # updating scope for the variables
+            scope = c_expression(scope,n,n_p,n_e,0) # updating scope for the expression stores/loads when an operator has an operator for both childs
             assembly = assembly + [asts[0].procedure_name + ":"] + rslt
             labels[asts[0].procedure_name] = n_p # currently stores num of parameters labels also needs to store loops and if statements. loops, if statements or functions without parameters will contain 0 as num of parameters
             asts = asts[0].connections + asts
