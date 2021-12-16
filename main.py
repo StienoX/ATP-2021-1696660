@@ -14,7 +14,7 @@ def main():
     lib   = parser.run(lexer.run(pre_prossesing(Path('pascal_lib.txt').read_text())))
     tests = parser.run(lexer.run(pre_prossesing(Path('pascal_test_functions.txt').read_text())))
     
-    print(main)
+    #print(main)
     comp = Compiler(main)
     comp.test(main.connections)
     
