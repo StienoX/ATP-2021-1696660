@@ -1,12 +1,11 @@
-program Printing;
+program Test;
 
-function Print(j : integer);
+function Test(j : integer);
 begin
     var x : integer;
     x := (1+1*1)*(1+1*2)
     var y : integer;
     var z : integer;
-    WriteLn('Your number was:',j)
 end;
 
 begin

@@ -9,8 +9,6 @@ class Compiler():
         self.labels = {} # dict stores all the labels generated in assembly
         self.scope = {} # dict stores the current variables as follows: (store function,load function) example call: assembly_instruction = scope[var_name][1]("r0") This will store the contents of r0 somewhere safe
     
-    
-    
     # a tempory test function that will only be used for debugging
     def test(self, ast):
         ast_head = ast[0]
@@ -92,9 +90,9 @@ class Compiler():
                 if n_p + i >= n - n_e:
                     return scope
                 if n > 4:
-                    scope[asts[0].var_name] = (lambda Rx: "    mov  r"+(n_p+4+i)+", " + Rx, lambda Rx: "    mov   " + Rx + ", r" + (n_p+4+i))
+                    scope[asts[0].var_name] = (lambda Rx: "    mov  r"+str(n_p+4+i)+", " + Rx, lambda Rx: "    mov   " + Rx + ", r" + str(n_p+4+i))
                 else:
-                    scope[asts[0].var_name] = (lambda Rx: "    str  " + Rx + ", [r7,#"+(n_p+i)*4+"]",       lambda Rx: "    ldr   " + Rx + ", [r7,#"+(n_p+i)*4+"]")
+                    scope[asts[0].var_name] = (lambda Rx: "    str  " + Rx + ", [r7,#"+str((n_p+i)*4)+"]",       lambda Rx: "    ldr   " + Rx + ", [r7,#"+str((n_p+i)*4)+"]")
                 return c_vars(asts[1:], scope, n, n_p, n_e, i+1)
             return scope
             
@@ -102,9 +100,9 @@ class Compiler():
             if n_offset + i >= n: 
                 return scope
             if n > 4:
-                scope[str("E"+str(i))] = (lambda Rx: "    mov  r"+(n_offset+4+i)+", " + Rx, lambda Rx: "    mov   " + Rx + ", r" + (n_offset+4+i))
+                scope[str("E"+str(i))] = (lambda Rx: "    mov  r"+str(n_offset+4+i)+", " + Rx, lambda Rx: "    mov   " + Rx + ", r" + str(n_offset+4+i))
             else:
-                scope[str("E"+str(i))] = (lambda Rx: "    str  " + Rx + ", [r7,#"+(n_offset+i)*4+"]",       lambda Rx: "    ldr   " + Rx + ", [r7,#"+(n_offset+i)*4+"]")
+                scope[str("E"+str(i))] = (lambda Rx: "    str  " + Rx + ", [r7,#"+str(n_offset+i)*4+"]",       lambda Rx: "    ldr   " + Rx + ", [r7,#"+str(n_offset+i)*4+"]")
             return c_expression(scope, n, n_offset, i+1)
         if (isinstance(asts[0],AST_Function)):
             rslt_d:List[AST_Var] = self.get_declarations_nested(asts[0]) # number of var declarations ((nested) forward lookup)
@@ -153,7 +151,7 @@ class Compiler():
             scope = c_vars(rslt_d,scope,n,n_p,n_e,0) # updating scope for the variables
             scope = c_expression(scope,n,n_p+n_d,0) # updating scope for the expression stores/loads when an operator has an operator for both childs
             assembly = assembly + [asts[0].procedure_name + ":"] + rslt # prepend the procedure name
-            labels[asts[0].procedure_name] = n_p # currently stores num of parameters labels also needs to store loops and if statements. loops, if statements or functions without parameters will contain 0 as num of parameters
+            labels[asts[0].procedure_name] = (n_p, 1) # currently stores num of parameters labels and sets the label active also needs to store loops and if statements. loops, if statements or functions without parameters will contain 0 as num of parameters
             
             # call next compile functions (with the connections of the function)
             (_, assembly, labels, scope) = self.c_function_body(asts[0].connections, assembly, labels, scope)
@@ -177,14 +175,12 @@ class Compiler():
                 # not supported
             params = list(map(lambda function_param: function_param ,asts[0].connections))
             
-    def c_function_body(self, asts:List[AST_Node], assembly:List[str], labels:dict, scope:dict) -> Tuple[List[AST_Node],List[str],dict,dict]:
-        (_, body) = self.get_params(asts)
-        if isinstance(body[0], AST_Begin):
-            connections:AST_Node = body[0].connections
-            
-        else:
-            assert("No body found in function")
-        return ([], assembly, labels, scope)
+
+    
+    def c_if_statement(self, asts:List[AST_Node], assembly:List[str], labels:dict, scope:dict) -> Tuple[List[AST_Node],List[str],dict,dict]:
+        if isinstance(asts[0], AST_If):
+            pass
+        return (asts, assembly, labels, scope)
     
     def c_expression(self, asts:List[AST_Node], assembly:List[str], labels: dict, scope: dict) -> Tuple[List[AST_Node], List[str]]:
         if (isinstance(asts[0],AST_Expression)):
@@ -244,14 +240,15 @@ class Compiler():
                             return _c_expression(current_node.left,"r1",_assembly)
                         
                         else:
+                            print(current_node.e_value)
                             _assembly = [temp_assembly + ", r1, r2"] + _assembly
                             _assembly = _c_expression(current_node.left, "r1", _assembly)
                             #store[0] load[1]
                             # store to stack / register
-                            _assembly = scope["E"+str(current_node.e_value)][0]("r1") + _assembly
+                            _assembly = [scope["E"+str(current_node.e_value-1)][0]("r1")] + _assembly
                             _assembly = _c_expression(current_node.right, "r2", _assembly)
                             # load from stack / register
-                            _assembly = scope["E"+str(current_node.e_value)][1]("r1") + _assembly
+                            _assembly = [scope["E"+str(current_node.e_value-1)][1]("r1")] + _assembly
                             return _assembly
                             
                 if isinstance(current_node, ExprLeaf):
@@ -263,10 +260,31 @@ class Compiler():
             if (isinstance(top_node, ExprNode)):
                 if top_node.data == ":=": # assignment to var
                     assembly = assembly + _c_expression(top_node.right,"r0",[]) + [scope[top_node.left.data][0]("r0")]
-                    
+                    return (asts[1:],assembly,labels,scope)
                 elif top_node.data == "=": # comparison
                     assembly = assembly + ["    cmp r1, r2"] # Need to check for consts vars (like x = 4)
+                    return (asts[1:],assembly,labels,scope)
                         
             else:
                 return (asts[1:], assembly, labels, scope) # useless expression we dont need to generate any assembly for this since it does not change anything. Example of an useless expression is: (5)
         return (asts, assembly, labels, scope)
+    
+    def c_function_body(self, asts:List[AST_Node], assembly:List[str], labels:dict, scope:dict) -> Tuple[List[AST_Node],List[str],dict,dict]:
+        (_, body) = self.get_params(asts)
+        if isinstance(body[0], AST_Begin):
+            connections:AST_Node = body[0].connections
+            def _c_function_body(function_asts:List[AST_Node], assembly:List[str], labels:dict, scope:dict)-> Tuple[List[AST_Node],List[str],dict,dict]:
+                if function_asts:
+                    if isinstance(function_asts[0], AST_Var):
+                        return _c_function_body(function_asts[1:], assembly, labels, scope)
+                    if isinstance(function_asts[0], AST_Expression):
+                        print(scope)
+                        return _c_function_body(self.c_expression([function_asts[0]], assembly, labels, scope))
+                    if isinstance(function_asts[0], AST_If):
+                        return _c_function_body(self.c_if_statement([function_asts[0]], assembly, labels, scope))
+                else:
+                    return (function_asts, assembly, labels, scope)
+            return _c_function_body(connections, assembly, labels, scope)
+        else:
+            assert("No body found in function")
+        return ([], assembly, labels, scope)
