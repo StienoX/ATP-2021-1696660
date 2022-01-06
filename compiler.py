@@ -9,12 +9,15 @@ class Compiler():
         self.labels = {} # dict stores all the labels generated in assembly
         self.scope = {} # dict stores the current variables as follows: (store function,load function) example call: assembly_instruction = scope[var_name][1]("r0") This will store the contents of r0 somewhere safe
     
+    def generate_assembly_from_list(self, assembly_lst:List[str]) -> str:
+        return "\n".join(assembly_lst)
+    
     # a tempory test function that will only be used for debugging
     def test(self, ast):
         ast_head = ast[0]
         if isinstance(ast_head, AST_Function):
-            print(ast_head.connections)
-            print(self.c_function_def([ast_head], [], {}, {}))
+            rslt = (self.c_function_def([ast_head], [], {}, {}))
+            print(self.generate_assembly_from_list(rslt[1]))
             #print(self.get_loads(ast_head)) 
             #print(len(self.get_declarations_nested(ast_head)))
         else:
@@ -47,9 +50,9 @@ class Compiler():
         def _count(expression:Union[ExprNode,ExprLeaf], i = 0) -> int:
             if isinstance(expression.right,ExprNode) and isinstance(expression.left,ExprNode):
                 i += 1
-                i += _count(expression.left, i) - i # calculate diff and add to i
-                i += _count(expression.right, i) - i
                 expression.e_value = i # sets the depth of the node in the tree which to use within the scope
+                i = _count(expression.left, i)
+                i = _count(expression.right, i)
                 return i
             elif isinstance(expression.right,ExprNode):
                 return _count(expression.right, i)
@@ -89,21 +92,23 @@ class Compiler():
             if asts and (isinstance(asts[0],AST_Var)):
                 if n_p + i >= n - n_e:
                     return scope
-                if n > 4:
-                    scope[asts[0].var_name] = (lambda Rx: "    mov  r"+str(n_p+4+i)+", " + Rx, lambda Rx: "    mov   " + Rx + ", r" + str(n_p+4+i))
+                if n <= 4:
+                    scope[asts[0].var_name] = (lambda Rx: "    mov r"+str(n_p+4+i)+", " + Rx, lambda Rx: "    mov " + Rx + ", r" + str(n_p+4+i))
                 else:
-                    scope[asts[0].var_name] = (lambda Rx: "    str  " + Rx + ", [r7,#"+str((n_p+i)*4)+"]",       lambda Rx: "    ldr   " + Rx + ", [r7,#"+str((n_p+i)*4)+"]")
+                    scope[asts[0].var_name] = (lambda Rx: "    str " + Rx + ", [r7,#"+str((n_p+i)*4)+"]",       lambda Rx: "    ldr " + Rx + ", [r7,#"+str((n_p+i)*4)+"]")
                 return c_vars(asts[1:], scope, n, n_p, n_e, i+1)
             return scope
             
         def c_expression(scope: dict, n: int, n_offset: int, i: int) -> Tuple[List[AST_Node], List[str]]:
             if n_offset + i >= n: 
                 return scope
-            if n > 4:
-                scope[str("E"+str(i))] = (lambda Rx: "    mov  r"+str(n_offset+4+i)+", " + Rx, lambda Rx: "    mov   " + Rx + ", r" + str(n_offset+4+i))
+            if n <= 4:
+                scope[str("E"+str(i))] = (lambda Rx: "    mov r"+str(n_offset+4+i)+", " + Rx, lambda Rx: "    mov " + Rx + ", r" + str(n_offset+4+i))
             else:
-                scope[str("E"+str(i))] = (lambda Rx: "    str  " + Rx + ", [r7,#"+str(n_offset+i)*4+"]",       lambda Rx: "    ldr   " + Rx + ", [r7,#"+str(n_offset+i)*4+"]")
+                scope[str("E"+str(i))] = (lambda Rx: "    str " + Rx + ", [r7,#"+str((n_offset+i)*4)+"]",       lambda Rx: "    ldr " + Rx + ", [r7,#"+str((n_offset+i)*4)+"]")
             return c_expression(scope, n, n_offset, i+1)
+        
+        
         if (isinstance(asts[0],AST_Function)):
             rslt_d:List[AST_Var] = self.get_declarations_nested(asts[0]) # number of var declarations ((nested) forward lookup)
             rslt_p = self.get_params(asts[0]) # number of parameters (forward lookup)
@@ -111,48 +116,46 @@ class Compiler():
             n_p = len(rslt_p[0])
             n_e = self.get_loads(asts[0])
             n = (n_d + n_p + n_e)
-            rslt = "    push  { r4, "  # push r4 for either first parameter or saving the stack pointer
+            rslt = "    push { r4"  if n else "    push { lr }"# push r4 for either first parameter or saving the stack pointer
             tmp_rslt = []
             if n <= 4: # when using less then 3 variables we use registers (one for storing lr)
                 if n_p >= 1:
-                    scope[rslt_p[0][0].parameter_name] = (lambda Rx: "    mov  r4, " + Rx, lambda Rx: "    mov   " + Rx + ", r4") # store and load functions for the first parameter
+                    scope[rslt_p[0][0].parameter_name] = (lambda Rx: "    mov r4, " + Rx, lambda Rx: "    mov " + Rx + ", r4") # store and load functions for the first parameter
                     tmp_rslt = tmp_rslt + [scope[rslt_p[0][0].parameter_name][0]("r0")] # get the str function and store the parameter in a save register
                 if n_p >= 2:
-                    scope[rslt_p[0][1].parameter_name] = (lambda Rx: "    mov  r5, " + Rx, lambda Rx: "    mov   " + Rx + ", r5")
+                    scope[rslt_p[0][1].parameter_name] = (lambda Rx: "    mov r5, " + Rx, lambda Rx: "    mov " + Rx + ", r5")
                     tmp_rslt = tmp_rslt + [scope[rslt_p[0][0].parameter_name][0]("r1")]
-                    rslt += "r5, " # pushing r5 since we are using it to store the second parameter
                 if n_p >= 3:
-                    scope[rslt_p[0][2].parameter_name] = (lambda Rx: "    mov  r6, " + Rx, lambda Rx: "    mov   " + Rx + ", r6")
+                    scope[rslt_p[0][2].parameter_name] = (lambda Rx: "    mov r6, " + Rx, lambda Rx: "    mov " + Rx + ", r6")
                     tmp_rslt = tmp_rslt + [scope[rslt_p[0][0].parameter_name][0]("r2")]
-                    rslt += "r6, "
                 if n_p >= 4:
-                    scope[rslt_p[0][2].parameter_name] = (lambda Rx: "    mov  r7, " + Rx, lambda Rx: "    mov   " + Rx + ", r7")
+                    scope[rslt_p[0][2].parameter_name] = (lambda Rx: "    mov r7, " + Rx, lambda Rx: "    mov " + Rx + ", r7")
                     tmp_rslt = tmp_rslt + [scope[rslt_p[0][0].parameter_name][0]("r3")]
-                    rslt += "r7, "
-            rslt += "lr}"
+                rslt += ", ".join(["","r5","r6","r7"][:n])
+            rslt += ", lr}" if n else ""
             rslt = [rslt] + tmp_rslt
             if n > 4: # when using more then 4 variables we use the stack
-                rslt = rslt + ["    sub  sp, sp, #" + str(n*4)]
-                rslt = rslt + ["    add  r4, sp, #0"] # using add because sp does not support mov
+                rslt = rslt + ["    sub sp, sp, #" + str(n*4)]
+                rslt = rslt + ["    add r4, sp, #0"] # using add because sp does not support mov
                 #scope[] need to add load and store to the stack
                 if n_p >= 1:
-                    scope[rslt_p[0][0].parameter_name] = (lambda Rx: "    str  " + Rx + ", [r7]",       lambda Rx: "    ldr   " + Rx + ", [r7]")
+                    scope[rslt_p[0][0].parameter_name] = (lambda Rx: "    str " + Rx + ", [r7]",       lambda Rx: "    ldr   " + Rx + ", [r7]")
                     rslt = rslt + [scope[rslt_p[0][0].parameter_name][0]("r0")]
                 if n_p >= 2:
-                    scope[rslt_p[0][0].parameter_name] = (lambda Rx: "    str  " + Rx + ", [r7, #4]",   lambda Rx: "    ldr   " + Rx + ", [r7, #4]")
+                    scope[rslt_p[0][0].parameter_name] = (lambda Rx: "    str " + Rx + ", [r7, #4]",   lambda Rx: "    ldr   " + Rx + ", [r7, #4]")
                     rslt = rslt + [scope[rslt_p[0][0].parameter_name][0]("r1")]
                 if n_p >= 3:
-                    scope[rslt_p[0][0].parameter_name] = (lambda Rx: "    str  " + Rx + ", [r7, #8]",   lambda Rx: "    ldr   " + Rx + ", [r7, #8]")
+                    scope[rslt_p[0][0].parameter_name] = (lambda Rx: "    str " + Rx + ", [r7, #8]",   lambda Rx: "    ldr   " + Rx + ", [r7, #8]")
                     rslt = rslt + [scope[rslt_p[0][0].parameter_name][0]("r2")]
                 if n_p >= 4:
-                    scope[rslt_p[0][0].parameter_name] = (lambda Rx: "    str  " + Rx + ", [r7, #12]",  lambda Rx: "    ldr   " + Rx + ", [r7, #12]")
+                    scope[rslt_p[0][0].parameter_name] = (lambda Rx: "    str " + Rx + ", [r7, #12]",  lambda Rx: "    ldr   " + Rx + ", [r7, #12]")
                     rslt = rslt + [scope[rslt_p[0][0].parameter_name][0]("r3")]
             
             scope = c_vars(rslt_d,scope,n,n_p,n_e,0) # updating scope for the variables
             scope = c_expression(scope,n,n_p+n_d,0) # updating scope for the expression stores/loads when an operator has an operator for both childs
             assembly = assembly + [asts[0].procedure_name + ":"] + rslt # prepend the procedure name
             labels[asts[0].procedure_name] = (n_p, 1) # currently stores num of parameters labels and sets the label active also needs to store loops and if statements. loops, if statements or functions without parameters will contain 0 as num of parameters
-            
+            scope[asts[0].procedure_name] = (lambda _: "    pop { " + ", ".join(["r4","r5","r6","r7"][:n]) + "".join([", ", "lr }"][int(not(n)):]) , lambda _: " function call")
             # call next compile functions (with the connections of the function)
             (_, assembly, labels, scope) = self.c_function_body(asts[0].connections, assembly, labels, scope)
             
@@ -183,6 +186,7 @@ class Compiler():
         return (asts, assembly, labels, scope)
     
     def c_expression(self, asts:List[AST_Node], assembly:List[str], labels: dict, scope: dict) -> Tuple[List[AST_Node], List[str]]:
+        
         if (isinstance(asts[0],AST_Expression)):
             #r1 = left
             #r2 = right
@@ -206,15 +210,15 @@ class Compiler():
                         # get the instruction
                         temp_assembly = ""
                         if current_node.data == "*":
-                            temp_assembly = "    mul " + return_register
+                            temp_assembly = "    mul " + return_register + ", "
                         elif current_node.data == "+":
-                            temp_assembly = "    sum " + return_register
+                            temp_assembly = "    add " + return_register + ", "
                         elif current_node.data == "-":
-                            temp_assembly = "    sub " + return_register
+                            temp_assembly = "    sub " + return_register + ", "
                         
                         elif current_node.data == "/":
                             assert() # not implementing this
-                            temp_assembly = "  ? div " + return_register
+                            temp_assembly = "  ? div " + return_register + ", "
                         else:
                             assert() # unknown/unexpected operator
                             
@@ -240,22 +244,20 @@ class Compiler():
                             return _c_expression(current_node.left,"r1",_assembly)
                         
                         else:
-                            print(current_node.e_value)
-                            _assembly = [temp_assembly + ", r1, r2"] + _assembly
-                            _assembly = _c_expression(current_node.left, "r1", _assembly)
-                            #store[0] load[1]
-                            # store to stack / register
-                            _assembly = [scope["E"+str(current_node.e_value-1)][0]("r1")] + _assembly
-                            _assembly = _c_expression(current_node.right, "r2", _assembly)
+                            _assembly = [temp_assembly + "r1, r2"] + _assembly
                             # load from stack / register
-                            _assembly = [scope["E"+str(current_node.e_value-1)][1]("r1")] + _assembly
+                            _assembly = [scope["E"+str(current_node.e_value-1)][1]("r2")] + _assembly
+                            #store[0] load[1]
+                            _assembly = _c_expression(current_node.left, "r1", _assembly)
+                            # store to stack / register
+                            _assembly = [scope["E"+str(current_node.e_value-1)][0]("r2")] + _assembly
+                            _assembly = _c_expression(current_node.right, "r2", _assembly)
+                            
                             return _assembly
                             
                 if isinstance(current_node, ExprLeaf):
                     pass # execute function or get variable
-     
-
-
+                
             top_node = asts[0].right
             if (isinstance(top_node, ExprNode)):
                 if top_node.data == ":=": # assignment to var
@@ -271,6 +273,7 @@ class Compiler():
     
     def c_function_body(self, asts:List[AST_Node], assembly:List[str], labels:dict, scope:dict) -> Tuple[List[AST_Node],List[str],dict,dict]:
         (_, body) = self.get_params(asts)
+        
         if isinstance(body[0], AST_Begin):
             connections:AST_Node = body[0].connections
             def _c_function_body(function_asts:List[AST_Node], assembly:List[str], labels:dict, scope:dict)-> Tuple[List[AST_Node],List[str],dict,dict]:
@@ -278,8 +281,7 @@ class Compiler():
                     if isinstance(function_asts[0], AST_Var):
                         return _c_function_body(function_asts[1:], assembly, labels, scope)
                     if isinstance(function_asts[0], AST_Expression):
-                        print(scope)
-                        return _c_function_body(self.c_expression([function_asts[0]], assembly, labels, scope))
+                        return _c_function_body(*self.c_expression([function_asts[0]], assembly, labels, scope))
                     if isinstance(function_asts[0], AST_If):
                         return _c_function_body(self.c_if_statement([function_asts[0]], assembly, labels, scope))
                 else:
