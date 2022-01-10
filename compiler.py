@@ -155,7 +155,7 @@ class Compiler():
             scope = c_expression(scope,n,n_p+n_d,0) # updating scope for the expression stores/loads when an operator has an operator for both childs
             assembly = assembly + [asts[0].procedure_name + ":"] + rslt # prepend the procedure name
             labels[asts[0].procedure_name] = (n_p, 1) # currently stores num of parameters labels and sets the label active also needs to store loops and if statements. loops, if statements or functions without parameters will contain 0 as num of parameters
-            scope[asts[0].procedure_name] = (lambda _: "    pop { " + ", ".join(["r4","r5","r6","r7"][:n]) + "".join([", ", "lr }"][int(not(n)):]) , lambda _: " function call")
+            scope[asts[0].procedure_name] = (lambda _: "    pop { " + ", ".join(["r4","r5","r6","r7"][:n]) + "".join([", ", "lr }"][int(not(n)):]) , lambda Rx: "function call")
             # call next compile functions (with the connections of the function)
             (_, assembly, labels, scope) = self.c_function_body(asts[0].connections, assembly, labels, scope)
             
@@ -196,13 +196,13 @@ class Compiler():
                         rslt = 0
                         #optimize by precalculating result of const value's when possible. This happens when both leafs of the current node are const
                         if current_node.data == "*":
-                            rslt = int(current_node.right.data) * int(current_node.left.data)
+                            rslt = int(current_node.left.data) * int(current_node.right.data)
                         elif current_node.data == "+":
-                            rslt = int(current_node.right.data) + int(current_node.left.data)
+                            rslt = int(current_node.left.data) + int(current_node.right.data)
                         elif current_node.data == "-":
-                            rslt = int(current_node.right.data) - int(current_node.left.data)
+                            rslt = int(current_node.left.data) - int(current_node.right.data)
                         elif current_node.data == "/":
-                            rslt = int(current_node.right.data) / int(current_node.left.data)
+                            rslt = int(current_node.left.data) / int(current_node.right.data)
                         _assembly = ["    mov " + return_register + ", #" + str(rslt)] + _assembly
                         return _assembly
                     else:
@@ -221,26 +221,36 @@ class Compiler():
                             temp_assembly = "  ? div " + return_register + ", "
                         else:
                             assert() # unknown/unexpected operator
-                            
+                         
                         
-                        if isinstance(current_node.left, ExprLeaf) and current_node.left.type not in ["func_call","var"]: # left side is a const value
+                        if current_node.left.type == "var" and current_node.right.type == "var":
+                            return [scope[current_node.left.data][1]("r1"),scope[current_node.left.data][1]("r2"),temp_assembly + "r1, r2"] + _assembly # might needs to swapped for sub
+                        
+                        elif current_node.left.type == "var" and current_node.right.type not in ["func_call","var"] and isinstance(current_node.right, ExprLeaf):
+                            return [scope[current_node.left.data][1]("r2"),"    mov r1, #" + str(current_node.right.data),temp_assembly + "r1, r2"] + _assembly
+                        elif current_node.right.type == "var" and current_node.left.type not in ["func_call","var"] and isinstance(current_node.left, ExprLeaf):
+                            return [scope[current_node.right.data][1]("r1"),temp_assembly + "r1, #" + str(current_node.left.data)] + _assembly
+                        
+                        
+                        
+                        elif isinstance(current_node.left, ExprLeaf) and current_node.left.type not in ["func_call","var"]: # left side is a const value
                             temp_assembly = temp_assembly + "r2, #" + str(current_node.left.data)
                             _assembly = [temp_assembly] + _assembly
                             return _c_expression(current_node.right,"r2",_assembly)
-                        
-                        elif isinstance(current_node.left, ExprLeaf) and current_node.left.type == "var":
-                            temp_assembly = temp_assembly + "r2, #" + str(current_node.left.data)
-                            _assembly = [temp_assembly] + _assembly
-                            return _c_expression(current_node.left,"r2",_assembly)
                            
                         elif isinstance(current_node.right, ExprLeaf) and current_node.right.type not in ["func_call","var"]:
                             temp_assembly = temp_assembly + "r1, #" + str(current_node.right.data)
                             _assembly = [temp_assembly] + _assembly
                             return _c_expression(current_node.left,"r1",_assembly)
                         
+                        elif isinstance(current_node.left, ExprLeaf) and current_node.left.type == "var":
+                            temp_assembly = temp_assembly + "r1"
+                            _assembly = [scope[current_node.left.data][1]("r1"),temp_assembly] + _assembly
+                            return _c_expression(current_node.right,"r2",_assembly)
+                        
                         elif isinstance(current_node.right, ExprLeaf) and current_node.right.type == "var":
-                            temp_assembly = temp_assembly + "r1, #" + str(current_node.right.data)
-                            _assembly = [temp_assembly] + _assembly
+                            temp_assembly = temp_assembly + "r2"
+                            _assembly = [scope[current_node.right.data][1]("r2"),temp_assembly] + _assembly
                             return _c_expression(current_node.left,"r1",_assembly)
                         
                         else:
@@ -254,9 +264,8 @@ class Compiler():
                             _assembly = _c_expression(current_node.right, "r2", _assembly)
                             
                             return _assembly
-                            
-                if isinstance(current_node, ExprLeaf):
-                    pass # execute function or get variable
+                else:
+                    assert("Error: Invalid Expression.")
                 
             top_node = asts[0].right
             if (isinstance(top_node, ExprNode)):
