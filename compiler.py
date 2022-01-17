@@ -110,12 +110,13 @@ class Compiler():
         
         
         if (isinstance(asts[0],AST_Function)):
+            previous_scope = deepcopy(scope)
             rslt_d:List[AST_Var] = self.get_declarations_nested(asts[0]) # number of var declarations ((nested) forward lookup)
             rslt_p = self.get_params(asts[0]) # number of parameters (forward lookup)
-            n_d = len(rslt_d)
-            n_p = len(rslt_p[0])
-            n_e = self.get_loads(asts[0])
-            n = (n_d + n_p + n_e)
+            n_d = len(rslt_d) # number of variable declarations
+            n_p = len(rslt_p[0]) # number of parameters
+            n_e = self.get_loads(asts[0]) # the maximum number of used registers (or stack space) simultaneous in use by expressions
+            n = (n_d + n_p + n_e) # the number total used registers in this function
             rslt = "    push { r4"  if n else "    push { lr }"# push r4 for either first parameter or saving the stack pointer
             tmp_rslt = []
             if n <= 4: # when using less then 3 variables we use registers (one for storing lr)
@@ -131,7 +132,7 @@ class Compiler():
                 if n_p >= 4:
                     scope[rslt_p[0][2].parameter_name] = (lambda Rx: "    mov r7, " + Rx, lambda Rx: "    mov " + Rx + ", r7")
                     tmp_rslt = tmp_rslt + [scope[rslt_p[0][0].parameter_name][0]("r3")]
-                rslt += ", ".join(["","r5","r6","r7"][:n])
+                rslt += ", ".join(["","r5","r6","r7"][:n]) # generates a string containing the used registers in this function. The amount is based off the n value
             rslt += ", lr}" if n else ""
             rslt = [rslt] + tmp_rslt
             if n > 4: # when using more then 4 variables we use the stack
@@ -154,29 +155,52 @@ class Compiler():
             scope = c_vars(rslt_d,scope,n,n_p,n_e,0) # updating scope for the variables
             scope = c_expression(scope,n,n_p+n_d,0) # updating scope for the expression stores/loads when an operator has an operator for both childs
             assembly = assembly + [asts[0].procedure_name + ":"] + rslt # prepend the procedure name
-            labels[asts[0].procedure_name] = (n_p, 1) # currently stores num of parameters labels and sets the label active also needs to store loops and if statements. loops, if statements or functions without parameters will contain 0 as num of parameters
+            print("22")
+            print("21")
+            print(rslt_p)
+            labels[asts[0].procedure_name] = (n_p, list(map(lambda x: str(x.type), rslt_p[0]))) # currently stores num of parameters labels and sets the label active also needs to store loops and if statements. loops, if statements or functions without parameters will contain 0 as num of parameters
             scope[asts[0].procedure_name] = (lambda _: "    pop { " + ", ".join(["r4","r5","r6","r7"][:n]) + "".join([", ", "lr }"][int(not(n)):]) , lambda Rx: "function call")
             # call next compile functions (with the connections of the function)
             (_, assembly, labels, scope) = self.c_function_body(asts[0].connections, assembly, labels, scope)
-            
-            # TODO
-            return (asts[1:], assembly, labels, scope)
+            return (asts[1:], assembly, labels, previous_scope)
         return (asts, assembly, labels, scope) # we are not in a function definition
             
     def c_function_call(self, asts:List[AST_Node], assembly:List[str], labels: dict, scope: dict) -> Tuple[List[AST_Node], List[str]]:
         if (isinstance(asts[0],AST_FunctionCall)):
-            pre_result = []
-            rslt = []
-            
-            #if arg._type == 'identifier':
-                # load from stack or register use scope.
-            #if arg._type == 'digit':
-                # load const to r+number of param place
-            #if arg._type == 'expression':
-                # call c_expression
-            #if arg._type == 'string':
-                # not supported
-            params = list(map(lambda function_param: function_param ,asts[0].connections))
+            print(asts[0])
+            if len(asts[0].connections) == 4:
+                if len(asts[0][3].connections):
+                    expr_assembly = self.c_expression([asts[0][3][0]], [], labels, scope) # expression inside function call for the parameter
+                    assembly += expr_assembly + ["    mov r3, r0"]      
+                elif asts[0][3].type == "var":
+                    assembly += [scope[str(asts[0][3].value)][1]("r3")]
+                else:
+                    assembly += ["    mov r3, #" + str(asts[0][3].value)] # const value
+            if len(asts[0].connections) >= 3:
+                if len(asts[0][2].connections):
+                    expr_assembly = self.c_expression([asts[0][2][0]], [], labels, scope)
+                    assembly += expr_assembly[1] + ["    mov r2, r0"]
+                elif asts[0][2].type == "var":
+                    assembly += [scope[str(asts[0][2].value)][1]("r2")]  
+                else:
+                    assembly += ["    mov r2, #" + str(asts[0][2].value)] # const value
+            if len(asts[0].connections) >= 2:
+                if len(asts[0][1].connections):
+                    expr_assembly = self.c_expression([asts[0][1][0]], [], labels, scope)
+                    assembly += expr_assembly + ["    mov r1, r0"]
+                elif asts[0][1].type == "var":
+                    assembly += [scope[str(asts[0][1].value)][1]("r1")]
+                else:
+                    assembly += ["    mov r1, #" + str(asts[0][1].value)] # const value  
+            if len(asts[0].connections) >= 1:
+                if len(asts[0][0].connections):
+                    expr_assembly = self.c_expression([asts[0][0][0]], [], labels, scope)
+                elif asts[0][0].type == "var":
+                    assembly += [scope[str(asts[0][0].value)][0]("r0")]
+                else:
+                    assembly += ["    mov r0, #" + str(asts[0][0].value)] # const value
+            return (asts[1:], assembly, labels, scope)
+        return (asts, assembly, labels, scope)
             
 
     
@@ -272,10 +296,57 @@ class Compiler():
                 if top_node.data == ":=": # assignment to var
                     assembly = assembly + _c_expression(top_node.right,"r0",[]) + [scope[top_node.left.data][0]("r0")]
                     return (asts[1:],assembly,labels,scope)
-                elif top_node.data == "=": # comparison
-                    assembly = assembly + ["    cmp r1, r2"] # Need to check for consts vars (like x = 4)
+                elif top_node.data == "=": # comparison 
+                    temp_assembly = ""
+                    
+                    if isinstance(top_node.right, ExprLeaf) and isinstance(top_node.left, ExprLeaf):
+                        if top_node.right.type == "var" and top_node.left.type == "var":
+                            assembly += [scope[top_node.right.data][1]("r2"),scope[top_node.left.data][1]("r1")]
+                            temp_assembly = "    cmp r1, r2"
+                        elif top_node.right.type == "var" and top_node.left.type != "func_call":
+                            assembly += [scope[top_node.right.data][1]("r1")]
+                            assembly += _c_expression(top_node.left,"r2",[])
+                            temp_assembly = "    cmp r1, r2"
+                        elif top_node.left.type == "var" and top_node.right.type != "func_call":
+                            assembly += [scope[top_node.left.data][1]("r1")]
+                            assembly += _c_expression(top_node.right,"r2",[])
+                            temp_assembly = "    cmp r1, r2"
+                        elif top_node.left.type == "func_call":
+                            pass
+                            assembly += ["    b .functioncall thing (needs to call self.c_function_call)"]
+                            temp_assembly += "r0"
+                        else:
+                            temp_assembly += "#" + str(top_node.right.data)
+                    elif isinstance(top_node.left, ExprLeaf):
+                        if top_node.left.type == "var":
+                            assembly += _c_expression(top_node.right,"r2",[]) + [scope[top_node.left.data][1]("r1")]
+                            temp_assembly = "    cmp r1, r2"
+                        elif top_node.left.type == "func_call":
+                            pass
+                        else:
+                            assembly += _c_expression(top_node.right,"r1",[])
+                            assembly += ["    cmp r1, #" + str(top_node.left.data)]
+                    elif isinstance(top_node.right, ExprLeaf):
+                        if top_node.right.type == "var":
+                            assembly += _c_expression(top_node.left,"r2",[]) + [scope[top_node.right.data][1]("r1")]
+                            temp_assembly = "    cmp r1, r2"
+                        elif top_node.left.type == "func_call":
+                            pass
+                        else:
+                            temp_assembly += "    cmp r1, #" + str(top_node.right.data)
+                            assembly += _c_expression(top_node.left,"r1",[])
+                    else: 
+                        _assembly = [scope["E"+str(top_node.e_value-1)][1]("r2")]
+                        _assembly = _c_expression(top_node.left, "r1", _assembly)
+                        _assembly = [scope["E"+str(top_node.e_value-1)][0]("r2")] + _assembly
+                        _assembly = _c_expression(top_node.right, "r2", _assembly)
+                        assembly += _assembly
+                        temp_assembly = "    cmp r1, r2"
+                    assembly += [temp_assembly]
+ 
                     return (asts[1:],assembly,labels,scope)
-                        
+                else:
+                    return (asts[1:], assembly + _c_expression(top_node,"r0",[]) ,labels,scope)  
             else:
                 return (asts[1:], assembly, labels, scope) # useless expression we dont need to generate any assembly for this since it does not change anything. Example of an useless expression is: (5)
         return (asts, assembly, labels, scope)
@@ -292,7 +363,9 @@ class Compiler():
                     if isinstance(function_asts[0], AST_Expression):
                         return _c_function_body(*self.c_expression([function_asts[0]], assembly, labels, scope))
                     if isinstance(function_asts[0], AST_If):
-                        return _c_function_body(self.c_if_statement([function_asts[0]], assembly, labels, scope))
+                        return _c_function_body(*self.c_if_statement([function_asts[0]], assembly, labels, scope))
+                    if isinstance(function_asts[0], AST_FunctionCall):
+                        return _c_function_body(*self.c_function_call([function_asts[0]], assembly, labels, scope))
                 else:
                     return (function_asts, assembly, labels, scope)
             return _c_function_body(connections, assembly, labels, scope)

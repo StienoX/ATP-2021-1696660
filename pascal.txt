@@ -2,6 +2,7 @@ program Test;
 
 function Test(j : integer);
 begin
+    Test(j,1,1+1)
     Test := (1*j+1)*(j+1*2)*(1+1*j)
 end;
 
