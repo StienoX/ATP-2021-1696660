@@ -453,7 +453,7 @@ class Parser():
                 return data
             
             if len(data[0]) >= 2 and ((check_token_equal_name(data[0][0], Token('parentheses_open')) or (check_token_equal_name(data[0][1], Token('operator'))))):
-                new_data = self.p_expression((data[0],AST_Parameter('list',[],'expression','expression')))
+                new_data = self.p_expression((data[0],AST_Parameter('pexpr',[],'expression','expression')))
                 data[1].append(new_data[1])
                 return (new_data[0],data[1])
             
@@ -463,7 +463,7 @@ class Parser():
                 return ((data[0][len(self.orders['f_list'][0]):]),data[1])  
              
             if (r_check(data[0], *(self.orders['str_f_list']))) or (r_check(data[0], *(self.orders['digit']))):
-                ast_param = AST_Parameter('list',[], data[0][0].data, data[0][0].name)
+                ast_param = AST_Parameter('pconst',[], data[0][0].data, data[0][0].name)
                 data[1].append(ast_param)
                 return ((data[0][len(self.orders['f_list'][0]):]),data[1])  
             
