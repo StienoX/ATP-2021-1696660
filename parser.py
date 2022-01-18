@@ -457,10 +457,17 @@ class Parser():
                 data[1].append(new_data[1])
                 return (new_data[0],data[1])
             
-            if (r_check(data[0], *(self.orders['f_list']))) or (r_check(data[0], *(self.orders['str_f_list']))) or (r_check(data[0], *(self.orders['digit']))):
+            if (r_check(data[0], *(self.orders['f_list']))):
+                ast_param = AST_Parameter('pvar',[], data[0][0].data, data[0][0].name)
+                data[1].append(ast_param)
+                return ((data[0][len(self.orders['f_list'][0]):]),data[1])  
+             
+            if (r_check(data[0], *(self.orders['str_f_list']))) or (r_check(data[0], *(self.orders['digit']))):
                 ast_param = AST_Parameter('list',[], data[0][0].data, data[0][0].name)
                 data[1].append(ast_param)
-                return ((data[0][len(self.orders['f_list'][0]):]),data[1])   
+                return ((data[0][len(self.orders['f_list'][0]):]),data[1])  
+            
+            
             return data
         return inner_p_function_call_param(data)
     
