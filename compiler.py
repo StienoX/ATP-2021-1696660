@@ -27,7 +27,7 @@ class Compiler():
     def generate_new_label(self, labels: dict) -> Tuple[str,dict]:
         def new_label(label_name, labels):
             if label_name in labels:
-                return new_label("L" + str((int(label_name[1:]) + 1)))
+                return new_label("L" + str((int(label_name[1:]) + 1)), labels)
             return label_name
         label_name = new_label("L1",labels)
         labels[label_name] = 0
@@ -41,6 +41,10 @@ class Compiler():
     def get_params(self, asts:List[AST_Node]) -> Tuple[List[AST_Node]]:
         return split_list_if(asts, lambda x: isinstance(x, AST_FunctionParameter))
     
+    # get_params :: [AST_Node] -> ([AST_Node],[AST_Node])
+    def get_body(self, asts:List[AST_Node]) -> Tuple[List[AST_Node]]:
+        return split_list_if(asts, lambda x: isinstance(x, AST_Begin))
+    
     # get_declarations_nested :: [AST_Node] -> ([AST_Node],[AST_Node])
     def get_loads(self,asts:List[AST_Node]) -> int:
         def _get_expressionAST(asts:List[AST_Node]) -> List[AST_Var]:
@@ -48,11 +52,13 @@ class Compiler():
             return functools.reduce(lambda x, y: x + y, list(map(_get_expressionAST,rslt[1])), rslt[0])
         expressions = _get_expressionAST(asts)
         def _count(expression:Union[ExprNode,ExprLeaf], i = 0) -> int:
-            if isinstance(expression.right,ExprNode) and isinstance(expression.left,ExprNode):
+            if (isinstance(expression.right,ExprNode) or expression.right.type == "func_call") and (isinstance(expression.left,ExprNode) or expression.left.type == "func_call"):
                 i += 1
                 expression.e_value = i # sets the depth of the node in the tree which to use within the scope
-                i = _count(expression.left, i)
-                i = _count(expression.right, i)
+                if isinstance(expression.left,ExprNode):
+                    i = _count(expression.left, i)
+                if isinstance(expression.right,ExprNode):
+                    i = _count(expression.right, i)
                 return i
             elif isinstance(expression.right,ExprNode):
                 return _count(expression.right, i)
@@ -88,6 +94,9 @@ class Compiler():
     
     def c_body(self, function_asts:List[AST_Node], assembly:List[str], labels:dict, scope:dict)-> Tuple[List[AST_Node],List[str],dict,dict]:
         if function_asts:
+            if len(function_asts) > 1:
+                (_, assembly, labels, scope) = self.c_body([function_asts[0]], assembly, labels, scope)
+                return self.c_body(function_asts[1:], assembly, labels, scope)
             if isinstance(function_asts[0], AST_Var):
                 return self.c_body(function_asts[1:], assembly, labels, scope)
             if isinstance(function_asts[0], AST_Expression):
@@ -96,6 +105,8 @@ class Compiler():
                 return self.c_body(*self.c_if_statement([function_asts[0]], assembly, labels, scope))
             if isinstance(function_asts[0], AST_FunctionCall):
                 return self.c_body(*self.c_function_call([function_asts[0]], assembly, labels, scope))
+            if isinstance(function_asts[0], AST_IfTrue) or isinstance(function_asts[0], AST_IfFalse):
+                return self.c_body(function_asts[0].connections, assembly, labels, scope) 
         else:
             return (function_asts, assembly, labels, scope)
     
@@ -146,7 +157,7 @@ class Compiler():
                     scope[rslt_p[0][2].parameter_name] = (lambda Rx: "    mov r7, " + Rx, lambda Rx: "    mov " + Rx + ", r7")
                     tmp_rslt = tmp_rslt + [scope[rslt_p[0][0].parameter_name][0]("r3")]
                 rslt += ", ".join(["","r5","r6","r7"][:n]) # generates a string containing the used registers in this function. The amount is based off the n value
-            rslt += ", lr}" if n else ""
+            rslt += ", lr }" if n else ""
             rslt = [rslt] + tmp_rslt
             if n > 4: # when using more then 4 variables we use the stack
                 rslt = rslt + ["    sub sp, sp, #" + str(n*4)]
@@ -169,7 +180,7 @@ class Compiler():
             scope = c_expression(scope,n,n_p+n_d,0) # updating scope for the expression stores/loads when an operator has an operator for both childs
             assembly = assembly + [asts[0].procedure_name + ":"] + rslt # prepend the procedure name
             labels[asts[0].procedure_name] = (n_p, list(map(lambda x: str(x.type), rslt_p[0]))) # currently stores num of parameters labels and sets the label active also needs to store loops and if statements. loops, if statements or functions without parameters will contain 0 as num of parameters
-            scope[asts[0].procedure_name] = (lambda _: "    pop { " + ", ".join(["r4","r5","r6","r7"][:n]) + "".join([", ", "lr }"][int(not(n)):]) , lambda Rx: "function call")
+            scope[asts[0].procedure_name] = (lambda _: "    pop { " + ", ".join(["r4","r5","r6","r7"][:n if n <= 4 else 3]) + "".join([", ", "pc }"][int(not(n)):]) , lambda Rx: "function call")
             # call next compile functions (with the connections of the function)
             (_, assembly, labels, scope) = self.c_function_body(asts[0].connections, assembly, labels, scope)
             return (asts[1:], assembly, labels, previous_scope)
@@ -177,11 +188,10 @@ class Compiler():
             
     def c_function_call(self, asts:List[AST_Node], assembly:List[str], labels: dict, scope: dict) -> Tuple[List[AST_Node], List[str]]:
         if (isinstance(asts[0],AST_FunctionCall)):
-            print(asts[0])
             if len(asts[0].connections) == 4:
                 if len(asts[0][3].connections):
                     expr_assembly = self.c_expression([asts[0][3][0]], [], labels, scope) # expression inside function call for the parameter
-                    assembly += expr_assembly + ["    mov r3, r0"]      
+                    assembly += expr_assembly[1] + ["    mov r3, r0"]      
                 elif asts[0][3].type == "pvar":
                     assembly += [scope[str(asts[0][3].value)][1]("r3")]
                 else:
@@ -197,7 +207,7 @@ class Compiler():
             if len(asts[0].connections) >= 2:
                 if len(asts[0][1].connections):
                     expr_assembly = self.c_expression([asts[0][1][0]], [], labels, scope)
-                    assembly += expr_assembly + ["    mov r1, r0"]
+                    assembly += expr_assembly[1] + ["    mov r1, r0"]
                 elif asts[0][1].type == "pvar":
                     assembly += [scope[str(asts[0][1].value)][1]("r1")]
                 else:
@@ -205,26 +215,31 @@ class Compiler():
             if len(asts[0].connections) >= 1:
                 if len(asts[0][0].connections):
                     expr_assembly = self.c_expression([asts[0][0][0]], [], labels, scope)
+                    assembly += expr_assembly[1]
                 elif asts[0][0].type == "pvar":
                     assembly += [scope[str(asts[0][0].value)][1]("r0")]
                 else:
                     assembly += ["    mov r0, #" + str(asts[0][0].value)] # const value
-            return (asts[1:], assembly, labels, scope)
+            print(assembly)
+            print(asts[0])
+            return (asts[1:], assembly + ["    b "+ asts[0]._function], labels, scope)
         return (asts, assembly, labels, scope)
             
 
     
     def c_if_statement(self, asts:List[AST_Node], assembly:List[str], labels:dict, scope:dict) -> Tuple[List[AST_Node],List[str],dict,dict]:
         if isinstance(asts[0], AST_If):
-            label_start_false = self.generate_new_label()[0]
-            label_end_false = self.generate_new_label()[0]
-            # add expression evulation
-            
-            (_,assembly, labels, scope) = self.c_body(split_list_if(asts[0].connections, lambda x: isinstance(x, AST_IfTrue)[0]), assembly, labels, scope)
-            assembly += label_start_false
-            (_,assembly, labels, scope) = self.c_body(split_list_if(asts[0].connections, lambda x: isinstance(x, AST_IfFalse)[0]), assembly, labels, scope)
-            assembly += label_end_false
-            (_,assembly, labels, scope) = self.c_body(asts[1:], assembly, labels, scope)
+            (label_start_false,labels) = self.generate_new_label(labels)
+            (label_end_false,labels) = self.generate_new_label(labels)
+            # add expression evalution
+            (_,assembly, labels, scope) = self.c_body((split_list_if(asts[0].connections, lambda x: isinstance(x, AST_Expression))[0]), assembly, labels, scope)
+            assembly += ["    bne "+str(label_start_false[:-1])]
+            (_,assembly, labels, scope) = self.c_body((split_list_if(asts[0].connections, lambda x: isinstance(x, AST_IfTrue))[0]), assembly, labels, scope)
+            assembly += ["    b "+str(label_end_false[:-1])]
+            assembly += [label_start_false]
+            (_,assembly, labels, scope) = self.c_body((split_list_if(asts[0].connections, lambda x: isinstance(x, AST_IfFalse))[0]), assembly, labels, scope)
+            assembly += [label_end_false]
+            return (asts[1:], assembly, labels, scope)
         return (asts, assembly, labels, scope)
     
     def c_expression(self, asts:List[AST_Node], assembly:List[str], labels: dict, scope: dict) -> Tuple[List[AST_Node], List[str]]:
@@ -257,11 +272,11 @@ class Compiler():
                             temp_assembly = "    add " + return_register + ", "
                         elif current_node.data == "-":
                             temp_assembly = "    sub " + return_register + ", "
-                        
                         elif current_node.data == "/":
                             assert() # not implementing this
                             temp_assembly = "  ? div " + return_register + ", "
                         else:
+                            print(current_node.data)
                             assert() # unknown/unexpected operator
                          
                         
@@ -295,16 +310,35 @@ class Compiler():
                             _assembly = [scope[current_node.right.data][1]("r2"),temp_assembly] + _assembly
                             return _c_expression(current_node.left,"r1",_assembly)
                         
+                        elif isinstance(current_node.left, ExprLeaf) and current_node.left.type == "func_call":
+                            temp_assembly = temp_assembly + "r1"
+                            _assembly = [scope[current_node.left.data][1]("r1"),temp_assembly] + _assembly
+                            return _c_expression(current_node.right,"r2",_assembly)
+                        
+                        elif isinstance(current_node.right, ExprLeaf) and current_node.right.type == "func_call":
+                            temp_assembly = temp_assembly + "r2"
+                            _assembly = [scope[current_node.right.data][1]("r2"),temp_assembly] + _assembly
+                            return _c_expression(current_node.left,"r1",_assembly)
+
+                        
                         else:
-                            _assembly = [temp_assembly + "r1, r2"] + _assembly
+                            _assembly = [temp_assembly + ("r1, r2" if current_node.left.type is not "func_call" else "r0, r2")] + _assembly
                             # load from stack / register
                             _assembly = [scope["E"+str(current_node.e_value-1)][1]("r2")] + _assembly
                             #store[0] load[1]
-                            _assembly = _c_expression(current_node.left, "r1", _assembly)
+                            if current_node.left.type is not "func_call":
+                                _assembly = _c_expression(current_node.left, "r1", _assembly)
+                            else:
+                                _assembly = self.c_function_call([current_node.left], [], labels, scope)[1] + _assembly
                             # store to stack / register
-                            _assembly = [scope["E"+str(current_node.e_value-1)][0]("r2")] + _assembly
-                            _assembly = _c_expression(current_node.right, "r2", _assembly)
                             
+                            _assembly = [scope["E"+str(current_node.e_value-1)][0]("r2" if current_node.right.type is not "func_call" else "r0")] + _assembly
+                            
+                            if current_node.right.type is not "func_call":
+                                _assembly = _c_expression(current_node.right, "r2", _assembly)
+                            else:
+                                _assembly = self.c_function_call([current_node.left], [], labels, scope)[1] + _assembly
+                                
                             return _assembly
                 else:
                     assert("Error: Invalid Expression.")
@@ -312,7 +346,10 @@ class Compiler():
             top_node = asts[0].right
             if (isinstance(top_node, ExprNode)):
                 if top_node.data == ":=": # assignment to var
-                    assembly = assembly + _c_expression(top_node.right,"r0",[]) + [scope[top_node.left.data][0]("r0")]
+                    if isinstance(top_node.right, ExprLeaf): # simple assignment (x := 4) 
+                        assembly = assembly + [scope[top_node.left.data][0]("#" + str(top_node.right.data))]
+                    else:
+                        assembly = assembly + _c_expression(top_node.right,"r0",[]) + [scope[top_node.left.data][0]("r0")]
                     return (asts[1:],assembly,labels,scope)
                 elif top_node.data == "=": # comparison 
                     temp_assembly = ""
@@ -323,12 +360,10 @@ class Compiler():
                             temp_assembly = "    cmp r1, r2"
                         elif top_node.right.type == "var" and top_node.left.type != "func_call":
                             assembly += [scope[top_node.right.data][1]("r1")]
-                            assembly += _c_expression(top_node.left,"r2",[])
-                            temp_assembly = "    cmp r1, r2"
+                            temp_assembly = "    cmp r1, #" + str(top_node.left.data)
                         elif top_node.left.type == "var" and top_node.right.type != "func_call":
                             assembly += [scope[top_node.left.data][1]("r1")]
-                            assembly += _c_expression(top_node.right,"r2",[])
-                            temp_assembly = "    cmp r1, r2"
+                            temp_assembly = "    cmp r1, #" + str(top_node.right.data)
                         elif top_node.left.type == "func_call":
                             pass
                             assembly += ["    b .functioncall thing (needs to call self.c_function_call)"]
@@ -370,8 +405,7 @@ class Compiler():
         return (asts, assembly, labels, scope)
     
     def c_function_body(self, asts:List[AST_Node], assembly:List[str], labels:dict, scope:dict) -> Tuple[List[AST_Node],List[str],dict,dict]:
-        (_, body) = self.get_params(asts)
-        
+        (body, _) = self.get_body(asts)
         if isinstance(body[0], AST_Begin):
             connections:AST_Node = body[0].connections
             return self.c_body(connections, assembly, labels, scope)

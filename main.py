@@ -20,8 +20,8 @@ def main():
     
     
     # running tests
-    #test = Interpreter(tests)
-    #test.run()
+    test = Interpreter(tests)
+    test.run()
     
     # linking files
     #interpreter = Interpreter(main)

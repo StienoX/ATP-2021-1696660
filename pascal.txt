@@ -1,33 +1,11 @@
 program Test;
 
-function Test(j : integer);
+function fib(x:integer):integer;
 begin
-    Test(j,1,1+1)
-    Test := (1*j+1)*(j+1*2)*(1+1*j)
+  if (x = 0) then
+    fib:=1;
+  if (x = 1) then
+    fib:=1
+  else
+    fib:=fib(x - 2) + fib(x - 1);
 end;
-
-begin
-    x := (1+1*1)*(1+1*2)
-    var input_data : integer;
-    var fib_result : integer;
-    var a : integer;
-    a := 0;
-    
-    WriteLn("Count to 10:");
-
-    repeat
-        a := a + 1
-        WriteLn(a)
-    until a = 10;
-
-    WriteLn();
-    WriteLn(2+3*(2+3) + a * 3 + 3);
-    WriteLn();
-    
-    WriteLn('Please provide the position in the fibonacci sequence:');
-    input_data := ReadLn();
-    Print(input_data);
-
-    fib_result := fib(input_data);
-    WriteLn("Fibonacci number at place ",input_data," is: ",fib_result, "   *(using the original definition)");
-end.

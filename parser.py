@@ -372,7 +372,7 @@ class Parser():
             head_node = _simple_insert_first_right(head_node,ExprLeaf('var',data[0][0].data))
             return (data[0][len(self.orders['exp_c'][0]):],head_node)
 
-        elif (open and r_check(data[0], *(self.orders['exp_2c']))) or r_check(data[0], *(self.orders['exp_2s'])): # digit ) or ;
+        elif (open and r_check(data[0], *(self.orders['exp_2c']))): #or r_check(data[0], *(self.orders['exp_2s'])): # digit ) or ;
             head_node = _simple_insert_first_right(head_node,ExprLeaf('digit',data[0][0].data))
             return (data[0][len(self.orders['exp_2c'][0]):],head_node)
         

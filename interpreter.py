@@ -32,7 +32,7 @@ class Functions:
     def get_function(self, function_name: str) -> List[AST_Node]:
         if function_name in self.functions:
             return self.functions[function_name]
-        raise Exception('Undefined function' + function_name)
+        raise Exception('Undefined function ' + function_name)
     
     def __str__(self) -> str:
         return str(self.functions)

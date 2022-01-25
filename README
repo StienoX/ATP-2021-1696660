@@ -49,3 +49,18 @@ Functie-parameters kunnen aan de interpreter meegegeven worden door: Door de Rea
 Functies kunnen andere functies aanroepen: zie voorbeeld [pascal_test_functions.txt] - [3-17]
 
 Functie resultaat wordt op de volgende manier weergegeven: Door de WriteLn functie
+
+Compiler Features:
+Gebruikt alleen de stack wanneer dat nodig is. Indien we genoeg hebben aan alleen registers wordt de stack niet gebruikt.
+Expressies werken met variables, constanten en kunnen complex in elkaar worden gezet. bijvoorbeeld 'j := (1*j+1)*(j+1*2)*(1+1*j)' werkt.
+Function calls werken (ook recursief).
+If statements werken.
+Repeats werken.
+
+Limitaties Compiler:
+
+Maximium van 4 parameters in function calls (meerdere variable in een functie nog steeds mogelijk door declaratie in functie body)
+In een function call kunnen expressies worden gebruikt maar parameter 
+Alleen de volgende operator zijn geimplementeerd: +, *, -, :=, (), =. Vergelijken '=' en assignment ':=' kunnen alleen aan de "top" van de expression worden gebruikt. Bijvoorbeeld x = (3 * 5 + 2) + 1 is valide, maar ook (2 * x) = 3. (3 = x) + (2 = x) werkt *niet*.
+array en string datatypes zijn niet geimplementeerd.
+Geen error handeling. 
