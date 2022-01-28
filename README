@@ -61,6 +61,6 @@ Limitaties Compiler:
 
 Maximium van 4 parameters in function calls (meerdere variable in een functie nog steeds mogelijk door declaratie in functie body)
 In een function call kunnen expressies worden gebruikt maar parameter 
-Alleen de volgende operator zijn geimplementeerd: +, *, -, :=, (), =. Vergelijken '=' en assignment ':=' kunnen alleen aan de "top" van de expression worden gebruikt. Bijvoorbeeld x = (3 * 5 + 2) + 1 is valide, maar ook (2 * x) = 3. (3 = x) + (2 = x) werkt *niet*.
+Alleen de volgende operator zijn geimplementeerd: +, *, -, :=, (), =. Vergelijken '=' en assignment ':=' kunnen alleen aan de "top" van de expression worden gebruikt. Bijvoorbeeld x = (3 * 5 + 2) + 1 is valide, maar ook (2 * x) = 3. (3 = x) + (2 = x) werkt *niet*. Ze moeten logischerwijs op het laatst worden uitgevoerd.
 array en string datatypes zijn niet geimplementeerd.
 Geen error handeling. 

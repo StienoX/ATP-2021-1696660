@@ -180,7 +180,7 @@ class Compiler():
             scope = c_expression(scope,n,n_p+n_d,0) # updating scope for the expression stores/loads when an operator has an operator for both childs
             assembly = assembly + [asts[0].procedure_name + ":"] + rslt # prepend the procedure name
             labels[asts[0].procedure_name] = (n_p, list(map(lambda x: str(x.type), rslt_p[0]))) # currently stores num of parameters labels and sets the label active also needs to store loops and if statements. loops, if statements or functions without parameters will contain 0 as num of parameters
-            scope[asts[0].procedure_name] = (lambda _: "    pop { " + ", ".join(["r4","r5","r6","r7"][:n if n <= 4 else 3]) + "".join([", ", "pc }"][int(not(n)):]) , lambda Rx: "function call")
+            scope[asts[0].procedure_name] = (lambda _: "    pop { " + ", ".join(["r4","r5","r6","r7"][:n if n <= 4 else 3]) + "".join([", ", "pc }"][int(not(n)):]) , lambda _: "return")
             # call next compile functions (with the connections of the function)
             (_, assembly, labels, scope) = self.c_function_body(asts[0].connections, assembly, labels, scope)
             return (asts[1:], assembly, labels, previous_scope)
@@ -220,9 +220,7 @@ class Compiler():
                     assembly += [scope[str(asts[0][0].value)][1]("r0")]
                 else:
                     assembly += ["    mov r0, #" + str(asts[0][0].value)] # const value
-            print(assembly)
-            print(asts[0])
-            return (asts[1:], assembly + ["    b "+ asts[0]._function], labels, scope)
+            return (asts[1:], assembly + ["    bl "+ asts[0]._function], labels, scope)
         return (asts, assembly, labels, scope)
             
 
@@ -322,19 +320,19 @@ class Compiler():
 
                         
                         else:
-                            _assembly = [temp_assembly + ("r1, r2" if current_node.left.type is not "func_call" else "r0, r2")] + _assembly
+                            _assembly = [temp_assembly + ("r1, r2" if current_node.left.type != "func_call" else "r0, r2")] + _assembly
                             # load from stack / register
                             _assembly = [scope["E"+str(current_node.e_value-1)][1]("r2")] + _assembly
                             #store[0] load[1]
-                            if current_node.left.type is not "func_call":
+                            if current_node.left.type != "func_call":
                                 _assembly = _c_expression(current_node.left, "r1", _assembly)
                             else:
                                 _assembly = self.c_function_call([current_node.left], [], labels, scope)[1] + _assembly
                             # store to stack / register
                             
-                            _assembly = [scope["E"+str(current_node.e_value-1)][0]("r2" if current_node.right.type is not "func_call" else "r0")] + _assembly
+                            _assembly = [scope["E"+str(current_node.e_value-1)][0]("r2" if current_node.right.type != "func_call" else "r0")] + _assembly
                             
-                            if current_node.right.type is not "func_call":
+                            if current_node.right.type != "func_call":
                                 _assembly = _c_expression(current_node.right, "r2", _assembly)
                             else:
                                 _assembly = self.c_function_call([current_node.left], [], labels, scope)[1] + _assembly
@@ -345,9 +343,12 @@ class Compiler():
                 
             top_node = asts[0].right
             if (isinstance(top_node, ExprNode)):
-                if top_node.data == ":=": # assignment to var
+                if top_node.data == ":=": # assignment to var or function return
                     if isinstance(top_node.right, ExprLeaf): # simple assignment (x := 4) 
-                        assembly = assembly + [scope[top_node.left.data][0]("#" + str(top_node.right.data))]
+                        if scope[top_node.left.data][1]("") != "return":
+                            assembly = assembly + [scope[top_node.left.data][0]("#" + str(top_node.right.data))]
+                        else: # fucntion return
+                            assembly = assembly + ["    mov r0, #" + str(top_node.right.data) , scope[top_node.left.data][0]("")]
                     else:
                         assembly = assembly + _c_expression(top_node.right,"r0",[]) + [scope[top_node.left.data][0]("r0")]
                     return (asts[1:],assembly,labels,scope)

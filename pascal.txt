@@ -9,3 +9,19 @@ begin
   else
     fib:=fib(x - 2) + fib(x - 1);
 end;
+
+function odd(n : integer): integer;
+begin
+    if (n = 0) then
+        odd:=0
+    else
+        odd := even(n-1);
+end;
+
+function even(n : integer): integer;
+begin
+    if (n = 0) then
+        even:=1
+    else
+        even := odd(n-1);
+end;
