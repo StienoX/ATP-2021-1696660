@@ -1,6 +1,6 @@
 Gekozen taal: Pascal
 
-Turing-compleet omdat: pacal turing complete echter ik heb niet alles van pascal kunnen implementeren. Maar conditional branching door middel van if's en repeats zijn geimplementeerd en de mogelijkheid on een willekeurige hoeveelheid geheugen aan te passen is mogelijk door middel van nieuwe variable te declaren.
+Turing-compleet omdat: pascal turing complete echter ik heb niet alles van pascal kunnen implementeren. Maar conditional branching door middel van if's en repeats zijn geimplementeerd en de mogelijkheid on een willekeurige hoeveelheid geheugen aan te passen is mogelijk door middel van nieuwe variable te declaren.
 
  
 
