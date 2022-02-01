@@ -281,25 +281,15 @@ class Compiler():
                             assert() # unknown/unexpected operator
                          
                         
+                        
                         if current_node.left.type == "var" and current_node.right.type == "var":
                             return [scope[current_node.left.data][1]("r1"),scope[current_node.left.data][1]("r2"),temp_assembly + "r1, r2"] + _assembly # might needs to swapped for sub
                         
-                        elif current_node.left.type == "var" and current_node.right.type not in ["func_call","var"] and isinstance(current_node.right, ExprLeaf):
-                            return [scope[current_node.left.data][1]("r2"),"    mov r1, #" + str(current_node.right.data),temp_assembly + "r1, r2"] + _assembly
+                        elif current_node.left.type == "var" and current_node.right.type not in ["func_call","var"] and isinstance(current_node.right, ExprLeaf) and current_node.data != "*":
+                            return [scope[current_node.left.data][1]("r1"),temp_assembly + "r1, #" + str(current_node.right.data)] + _assembly
+                        
                         elif current_node.right.type == "var" and current_node.left.type not in ["func_call","var"] and isinstance(current_node.left, ExprLeaf):
-                            return [scope[current_node.right.data][1]("r1"),temp_assembly + "r1, #" + str(current_node.left.data)] + _assembly
-                        
-                        
-                        
-                        elif isinstance(current_node.left, ExprLeaf) and current_node.left.type not in ["func_call","var"]: # left side is a const value
-                            temp_assembly = temp_assembly + "r2, #" + str(current_node.left.data)
-                            _assembly = [temp_assembly] + _assembly
-                            return _c_expression(current_node.right,"r2",_assembly)
-                           
-                        elif isinstance(current_node.right, ExprLeaf) and current_node.right.type not in ["func_call","var"]:
-                            temp_assembly = temp_assembly + "r1, #" + str(current_node.right.data)
-                            _assembly = [temp_assembly] + _assembly
-                            return _c_expression(current_node.left,"r1",_assembly)
+                            return [scope[current_node.right.data][1]("r2"),"    mov r1, #" + str(current_node.left.data),temp_assembly + "r1, r2"] + _assembly
                         
                         elif isinstance(current_node.left, ExprLeaf) and current_node.left.type == "var":
                             temp_assembly = temp_assembly + "r1"
@@ -320,7 +310,21 @@ class Compiler():
                             temp_assembly = temp_assembly + "r2"
                             _assembly = [scope[current_node.right.data][1]("r2"),temp_assembly] + _assembly
                             return _c_expression(current_node.left,"r1",_assembly)
-
+                        
+                        elif isinstance(current_node.left, ExprLeaf) and current_node.left.type not in ["func_call","var"]  and current_node.data != "*": # left side is a const value
+                            temp_assembly = temp_assembly + "r2, #" + str(current_node.left.data)
+                            _assembly = [temp_assembly] + _assembly
+                            return _c_expression(current_node.right,"r2",_assembly)
+                           
+                        elif isinstance(current_node.right, ExprLeaf) and current_node.right.type not in ["func_call","var"]  and current_node.data != "*":
+                            temp_assembly = temp_assembly + "r1, #" + str(current_node.right.data)
+                            _assembly = [temp_assembly] + _assembly
+                            return _c_expression(current_node.left,"r1",_assembly)
+                        
+                        elif current_node.data == "*" and current_node.right.type not in ["func_call","var"]:
+                            temp_assembly = temp_assembly + "r1, r2"
+                            _assembly = [temp_assembly] + _assembly
+                            return _c_expression(current_node.right,"r2",_assembly)
                         
                         else:
                             _assembly = [temp_assembly + ("r1, r2" if current_node.left.type != "func_call" else "r0, r2")] + _assembly
@@ -338,12 +342,14 @@ class Compiler():
                             if current_node.right.type != "func_call":
                                 _assembly = _c_expression(current_node.right, "r2", _assembly)
                             else:
-                                _assembly = self.c_function_call([current_node.left], [], labels, scope)[1] + _assembly
+                                _assembly = self.c_function_call([current_node.right], [], labels, scope)[1] + _assembly
                                 
                             return _assembly
+                elif isinstance(current_node, ExprLeaf) and current_node.type != ["func_call","var"]:
+                    return ["    mov " + str(return_register) + ", #" + str(current_node.data)] + _assembly
                 else:
-                    assert("Error: Invalid Expression.")
-                
+                    assert("Invalid expression")
+                    
             top_node = asts[0].right
             if (isinstance(top_node, ExprNode)):
                 if top_node.data == ":=": # assignment to var or function return

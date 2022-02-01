@@ -23,7 +23,7 @@ def main():
     
     # lexing and parsing both files
     main: AST_Program  = parser.run(lexer.run(pre_prossesing(Path(args["input"]).read_text())))
-    
+
     comp = Compiler(main)
     with open(Path(args["output"]),"w") as output_file:
         output_file.writelines(comp.compile(main))
