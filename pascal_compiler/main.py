@@ -27,6 +27,7 @@ def main():
     comp = Compiler(main)
     with open(Path(args["output"]),"w") as output_file:
         output_file.writelines(comp.compile(main))
+        print("Compiled: " + str(args["input"] + " to " + str(args["output"]) + " successfully."))
         
     
 if __name__== "__main__":

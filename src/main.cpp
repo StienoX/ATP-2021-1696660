@@ -1,4 +1,8 @@
 
+#include <hwlib.hpp>
+#include <catch.hpp>
+
+
 unsigned int fib_cpp (unsigned int x) {
     if (x == 0 || x == 1) {
         return 1;
@@ -7,7 +11,7 @@ unsigned int fib_cpp (unsigned int x) {
     }
 }
 
-//extern "C" unsigned int fib(unsigned int);
+extern "C" unsigned int fib(unsigned int);
 
 unsigned int odd_cpp(unsigned int n);
 
@@ -19,7 +23,7 @@ unsigned int even_cpp(unsigned int n) {
     }
 }
 
-//extern "C" unsigned int even(unsigned int);
+extern "C" unsigned int even(unsigned int);
 
 unsigned int odd_cpp(unsigned int n) {
     if (n == 0) {
@@ -29,17 +33,9 @@ unsigned int odd_cpp(unsigned int n) {
     }
 }
 
-//extern "C" unsigned int odd(unsigned int);
-
-
-
-
-int factorial(int n) {
-    if (n == 0)
-        return 1;
-    return n * factorial (n - 1);
-}
+extern "C" unsigned int odd(unsigned int);
 
 int main () {
+    hwlib::cout << "Hello World!" << hwlib::endl;
     return 0;
 }

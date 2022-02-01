@@ -2,3 +2,12 @@ __pycache__
 .vscode
 *.asm
 bmptk
+hwlib
+Catch2
+_*
+src/bmptk*
+*.ld
+*.map
+*.o
+*.elf
+*.bin
