@@ -35,6 +35,7 @@ int expression_cpp(int j) {
     return (8 + 2 - 3 + 1 - 2 - (4 + 5)) * j;
 }
 
+// Pascal functions. See pascal.txt for implementation. (is the same as the cpp functions above)
 extern "C" unsigned int fib(unsigned int);
 extern "C" unsigned int even(unsigned int);
 extern "C" unsigned int odd(unsigned int);
@@ -144,7 +145,7 @@ int main() {
         rslt_odd[odd(lst[i]) == odd_cpp(lst[i])] += 1;
         rslt_even[even(lst[i]) == even_cpp(lst[i])] += 1;
         rslt_expression[expression(lst[i]) == expression_cpp(lst[i])] += 1;
-        if (i < 10) // skipping high number due long computation time
+        if (i < 10) // skipping high number due long computation time (or running out of stack space)
             rslt_fib[fib(lst[i]) == fib_cpp(lst[i])] += 1;
     }
     hwlib::cout << hwlib::endl;
