@@ -28,5 +28,56 @@ end;
 
 function expression(j : integer);
 begin
-  expression := 8 * j - 3 + j * 2 * (4 + 5);
+  expression := (8 + 2 - 3 + 1 - 2 - (4 + 5)) * j;
+end;
+
+
+
+function xpr_var_plus_var(j : integer) : integer;
+begin
+  xpr_var_plus_var := j + j;
+end;
+
+function xpr_var_times_var(j : integer) : integer;
+begin
+  xpr_var_times_var := j * j;
+end;
+
+function xpr_var_sub_var(j : integer) : integer;
+begin
+  xpr_var_sub_var := j - j;
+end;
+
+
+
+function xpr_var_plus_const(j : integer) : integer;
+begin
+  xpr_var_plus_const := j + 4;
+end;
+
+function xpr_var_sub_const(j : integer) : integer;
+begin
+  xpr_var_sub_const := j - 4;
+end;
+
+function xpr_var_times_const(j : integer) : integer;
+begin
+  xpr_var_times_const := j * 4;
+end;
+
+
+
+function xpr_const_plus_const() : integer;
+begin
+  xpr_const_plus_const := 4 + 4;
+end;
+
+function xpr_const_sub_const() : integer;
+begin
+  xpr_const_sub_const := 4 - 4;
+end;
+
+function xpr_const_times_const() : integer;
+begin
+  xpr_const_times_const := 4 * 4;
 end;

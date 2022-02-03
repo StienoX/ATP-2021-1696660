@@ -269,6 +269,7 @@ class Compiler():
                         temp_assembly = ""
                         if current_node.data == "*":
                             temp_assembly = "    mul " + return_register + ", "
+                                
                         elif current_node.data == "+":
                             temp_assembly = "    add " + return_register + ", "
                         elif current_node.data == "-":
@@ -283,7 +284,10 @@ class Compiler():
                         
                         
                         if current_node.left.type == "var" and current_node.right.type == "var":
-                            return [scope[current_node.left.data][1]("r1"),scope[current_node.left.data][1]("r2"),temp_assembly + "r1, r2"] + _assembly # might needs to swapped for sub
+                            if return_register == "r0" and current_node.data == "*":
+                                return ([scope[current_node.left.data][1]("r1"),scope[current_node.right.data][1]("r2"),"    mul r1, r1, r2","    mov r0, r1"] + _assembly)
+                            else:
+                                return ([scope[current_node.left.data][1]("r1"),scope[current_node.right.data][1]("r2"),temp_assembly + "r1, r2"] + _assembly)
                         
                         elif current_node.left.type == "var" and current_node.right.type not in ["func_call","var"] and isinstance(current_node.right, ExprLeaf) and current_node.data != "*":
                             return [scope[current_node.left.data][1]("r1"),temp_assembly + "r1, #" + str(current_node.right.data)] + _assembly
@@ -292,22 +296,28 @@ class Compiler():
                             return [scope[current_node.right.data][1]("r2"),"    mov r1, #" + str(current_node.left.data),temp_assembly + "r1, r2"] + _assembly
                         
                         elif isinstance(current_node.left, ExprLeaf) and current_node.left.type == "var":
+                            if return_register == "r0" and current_node.data == "*":
+                                _assembly = [scope[current_node.left.data][1]("r1"),"    mul r1, r1, r2","    mov r0, r1"] + _assembly
+                                return _c_expression(current_node.right,"r2",_assembly)
                             temp_assembly = temp_assembly + "r1"
                             _assembly = [scope[current_node.left.data][1]("r1"),temp_assembly] + _assembly
                             return _c_expression(current_node.right,"r2",_assembly)
                         
                         elif isinstance(current_node.right, ExprLeaf) and current_node.right.type == "var":
-                            temp_assembly = temp_assembly + "r2"
+                            if return_register == "r0" and current_node.data == "*":
+                                _assembly = [scope[current_node.right.data][1]("r2"),"    mul r1, r1, r2","    mov r0, r1"] + _assembly
+                                return _c_expression(current_node.left,"r1",_assembly)
+                            temp_assembly = temp_assembly + "r1, r2"
                             _assembly = [scope[current_node.right.data][1]("r2"),temp_assembly] + _assembly
                             return _c_expression(current_node.left,"r1",_assembly)
                         
-                        elif isinstance(current_node.left, ExprLeaf) and current_node.left.type == "func_call":
-                            temp_assembly = temp_assembly + "r1"
+                        elif isinstance(current_node.left, ExprLeaf) and current_node.left.type == "func_call": # needs to call c_functioncall instead of scope
+                            temp_assembly = temp_assembly + "r1, r2"
                             _assembly = [scope[current_node.left.data][1]("r1"),temp_assembly] + _assembly
                             return _c_expression(current_node.right,"r2",_assembly)
                         
-                        elif isinstance(current_node.right, ExprLeaf) and current_node.right.type == "func_call":
-                            temp_assembly = temp_assembly + "r2"
+                        elif isinstance(current_node.right, ExprLeaf) and current_node.right.type == "func_call": # needs to call c_functioncall instead of scope
+                            temp_assembly = temp_assembly + "r1, r2"
                             _assembly = [scope[current_node.right.data][1]("r2"),temp_assembly] + _assembly
                             return _c_expression(current_node.left,"r1",_assembly)
                         
