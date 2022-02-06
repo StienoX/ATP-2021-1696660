@@ -200,16 +200,16 @@ class Compiler():
                 rslt = rslt + ["    sub sp, sp, #" + str(n*4)]
                 rslt = rslt + ["    add r4, sp, #0"] # using add because sp does not support mov
                 if n_p >= 1:
-                    scope[rslt_p[0][0].parameter_name] = (lambda Rx: "    str " + Rx + ", [r7]",       lambda Rx: "    ldr   " + Rx + ", [r7]")
+                    scope[rslt_p[0][0].parameter_name] = (lambda Rx: "    str " + Rx + ", [r4]",       lambda Rx: "    ldr   " + Rx + ", [r4]")
                     rslt = rslt + [scope[rslt_p[0][0].parameter_name][0]("r0")]
                 if n_p >= 2:
-                    scope[rslt_p[0][0].parameter_name] = (lambda Rx: "    str " + Rx + ", [r7, #4]",   lambda Rx: "    ldr   " + Rx + ", [r7, #4]")
+                    scope[rslt_p[0][0].parameter_name] = (lambda Rx: "    str " + Rx + ", [r4, #4]",   lambda Rx: "    ldr   " + Rx + ", [r4, #4]")
                     rslt = rslt + [scope[rslt_p[0][0].parameter_name][0]("r1")]
                 if n_p >= 3:
-                    scope[rslt_p[0][0].parameter_name] = (lambda Rx: "    str " + Rx + ", [r7, #8]",   lambda Rx: "    ldr   " + Rx + ", [r7, #8]")
+                    scope[rslt_p[0][0].parameter_name] = (lambda Rx: "    str " + Rx + ", [r4, #8]",   lambda Rx: "    ldr   " + Rx + ", [r4, #8]")
                     rslt = rslt + [scope[rslt_p[0][0].parameter_name][0]("r2")]
                 if n_p >= 4:
-                    scope[rslt_p[0][0].parameter_name] = (lambda Rx: "    str " + Rx + ", [r7, #12]",  lambda Rx: "    ldr   " + Rx + ", [r7, #12]")
+                    scope[rslt_p[0][0].parameter_name] = (lambda Rx: "    str " + Rx + ", [r4, #12]",  lambda Rx: "    ldr   " + Rx + ", [r4, #12]")
                     rslt = rslt + [scope[rslt_p[0][0].parameter_name][0]("r3")]
             
             
@@ -220,7 +220,7 @@ class Compiler():
             
             # this generated the closing pop instruction for the function. It also used the scope and pretends to be a variable. 
             # Since pascal returns using the same operater as setting a variable we can use the scope to generate each function return.
-            scope[asts[0].procedure_name] = (lambda _: "    pop { " + ", ".join(["r4","r5","r6","r7"][:n if n <= 4 else 3]) + "".join([", ", "pc }"][int(not(n)):]) , lambda _: "return")
+            scope[asts[0].procedure_name] = (lambda _: "    pop { " + ", ".join(["r4","r5","r6","r7"][:n if n <= 4 else 1]) + "".join([", ", "pc }"][int(not(n)):]) , lambda _: "return")
             # lastly we call the c_function_body compilerfunction to generate the assembly in the body using the initialized scope
             (_, assembly, labels, scope) = self.c_function_body(asts[0].connections, assembly, labels, scope)
             return (asts[1:], assembly, labels, previous_scope) # return the previous scope since we are outside our function
