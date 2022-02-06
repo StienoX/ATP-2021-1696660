@@ -5,55 +5,6 @@
 //#define CATCH_CONFIG_NO_POSIX_SIGNALS
 //#include <catch2/catch.hpp>
 
-unsigned int fib_cpp (unsigned int x) {
-    if (x == 0 || x == 1) {
-        return 1;
-    } else {
-        return fib_cpp(x - 2) + fib_cpp(x - 1);
-    }
-}
-
-unsigned int odd_cpp(unsigned int n);
-
-unsigned int even_cpp(unsigned int n) {
-    if (n == 0) {
-        return 1;
-    } else {
-        return odd_cpp(n-1);
-    }
-}
-
-unsigned int odd_cpp(unsigned int n) {
-    if (n == 0) {
-        return 0;
-    } else {
-        return even_cpp(n-1);
-    }
-}
-
-int expression_cpp(int j) {
-    return (8 + 2 - 3 + 1 - 2 - (4 + 5)) * j;
-}
-
-// Pascal functions. See pascal.txt for implementation. (is the same as the cpp functions above)
-extern "C" unsigned int fib(unsigned int);
-extern "C" unsigned int even(unsigned int);
-extern "C" unsigned int odd(unsigned int);
-extern "C" int expression(int);
-
-extern "C" int xpr_var_plus_var(int);
-extern "C" int xpr_var_times_var(int);
-extern "C" int xpr_var_sub_var(int);
-
-extern "C" int xpr_var_plus_const(int);
-extern "C" int xpr_var_sub_const(int);
-extern "C" int xpr_var_times_const(int);
-
-extern "C" int xpr_const_plus_const();
-extern "C" int xpr_const_sub_const();
-extern "C" int xpr_const_times_const();
-
-
 // Getting catch2 reference errors when using with hwlib. I don't how to fix these. So I will not be using Catch but instead be running the tests from the main() function
 
 /*
@@ -110,6 +61,55 @@ TEST_CASE( "fib_cpp implementation compared to fib pascal implementation", "[fib
 }
 */
 
+unsigned int fib_cpp (unsigned int x) {
+    if (x == 0 || x == 1) {
+        return 1;
+    } else {
+        return fib_cpp(x - 2) + fib_cpp(x - 1);
+    }
+}
+
+unsigned int odd_cpp(unsigned int n);
+
+unsigned int even_cpp(unsigned int n) {
+    if (n == 0) {
+        return 1;
+    } else {
+        return odd_cpp(n-1);
+    }
+}
+
+unsigned int odd_cpp(unsigned int n) {
+    if (n == 0) {
+        return 0;
+    } else {
+        return even_cpp(n-1);
+    }
+}
+
+int expression_cpp(int j) {
+    return (8 + 2 - 3 + 1 - 2 - (4 + 5)) * j;
+}
+
+// Pascal functions. See pascal.txt for implementation. (is the same as the cpp functions above)
+extern "C" unsigned int fib(unsigned int);
+extern "C" unsigned int even(unsigned int);
+extern "C" unsigned int odd(unsigned int);
+extern "C" int expression(int);
+
+extern "C" int xpr_var_plus_var(int);
+extern "C" int xpr_var_times_var(int);
+extern "C" int xpr_var_sub_var(int);
+
+extern "C" int xpr_var_plus_const(int);
+extern "C" int xpr_var_sub_const(int);
+extern "C" int xpr_var_times_const(int);
+
+extern "C" int xpr_const_plus_const();
+extern "C" int xpr_const_sub_const();
+extern "C" int xpr_const_times_const();
+
+
 
 int main() {
 
@@ -134,22 +134,38 @@ int main() {
     rslt_simple_expressions[xpr_var_plus_const(4) == 8] += 1;       // var + 4
     rslt_simple_expressions[xpr_var_times_const(4) == 16] += 1;     // var * 4 
     rslt_simple_expressions[xpr_var_sub_const(4) == 0] += 1;        // var - 4
-
+    rslt_simple_expressions[xpr_var_sub_const(2000000000) == 1999999996] += 1;
+    rslt_simple_expressions[(long)xpr_var_plus_const(2147483647) == (long)2147483651] += 1; // These both get converted to int in the comparison thus generating an overflow.
+    
     rslt_simple_expressions[xpr_var_plus_var(4) == 8] += 1;         // var + var
     rslt_simple_expressions[xpr_var_times_var(4) == 16] += 1;       // var * var
     rslt_simple_expressions[xpr_var_sub_var(4) == 0] += 1;          // var - var
 
+    bool bool_odd, bool_even, bool_expression, bool_fib;
+
 
     // tests the following value's (1,2,3,4,5,6,7,8,9,20,1235) inside the functions: odd, even, fib and expression
     for (unsigned int i = 0; i < 11; i++) {
-        rslt_odd[odd(lst[i]) == odd_cpp(lst[i])] += 1;
-        rslt_even[even(lst[i]) == even_cpp(lst[i])] += 1;
-        rslt_expression[expression(lst[i]) == expression_cpp(lst[i])] += 1;
-        if (i < 10) // skipping high number due long computation time (or running out of stack space)
-            rslt_fib[fib(lst[i]) == fib_cpp(lst[i])] += 1;
+        bool_odd = odd(lst[i]) == odd_cpp(lst[i]);
+        if (!bool_odd)
+            hwlib::cout << "Odd Error with input:" << lst[i] << hwlib::endl;
+        bool_even = even(lst[i]) == even_cpp(lst[i]);
+        if (!bool_even)
+            hwlib::cout << "Even Error with input:" << lst[i] << hwlib::endl;
+        bool_expression = expression(lst[i]) == expression_cpp(lst[i]);
+        if (!bool_expression)
+            hwlib::cout << "Odd Error with input:" << lst[i] << hwlib::endl;
+        rslt_odd[bool_odd] += 1;
+        rslt_even[bool_even] += 1;
+        rslt_expression[bool_expression] += 1;
+        if (i < 10) { // skipping high number due long computation time (or running out of stack space)
+            bool_fib = fib(lst[i]) == fib_cpp(lst[i]);
+            if (!bool_fib) 
+                hwlib::cout << "Odd Error with input:" << lst[i] << hwlib::endl;
+            rslt_fib[bool_fib] += 1;
+        }
     }
     hwlib::cout << hwlib::endl;
-    hwlib::cout << "Done" << hwlib::endl;
     hwlib::cout << "Basic expressions test: "   << rslt_simple_expressions[1]   << " out of " << rslt_simple_expressions[1] + rslt_simple_expressions[0]    << " completed successfully" << hwlib::endl;
     hwlib::cout << "Odd Unit test: "            << rslt_odd[1]                  << " out of " << rslt_odd[1] + rslt_odd[0]                                  << " completed successfully" << hwlib::endl;
     hwlib::cout << "Even Unit test: "           << rslt_even[1]                 << " out of " << rslt_even[1] + rslt_even[0]                                << " completed successfully" << hwlib::endl;
