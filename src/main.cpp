@@ -150,11 +150,11 @@ int main() {
     }
     hwlib::cout << hwlib::endl;
     hwlib::cout << "Done" << hwlib::endl;
-    hwlib::cout << "Basic expressions test: "<<rslt_simple_expressions[1]          << " out of " << rslt_simple_expressions[1] + rslt_simple_expressions[0]                  << " completed successfully" << hwlib::endl;
-    hwlib::cout << "Odd Unit test: "        << rslt_odd[1]          << " out of " << rslt_odd[1] + rslt_odd[0]                  << " completed successfully" << hwlib::endl;
-    hwlib::cout << "Even Unit test: "       << rslt_even[1]         << " out of " << rslt_even[1] + rslt_even[0]                << " completed successfully" << hwlib::endl;
-    hwlib::cout << "Expression Unit test: " << rslt_expression[1]   << " out of " << rslt_expression[1] + rslt_expression[0]    << " completed successfully" << hwlib::endl;
-    hwlib::cout << "Fib Unit test: "        << rslt_fib[1]          << " out of " << rslt_fib[1] + rslt_fib[0]                  << " completed successfully" << hwlib::endl;
+    hwlib::cout << "Basic expressions test: "   << rslt_simple_expressions[1]   << " out of " << rslt_simple_expressions[1] + rslt_simple_expressions[0]    << " completed successfully" << hwlib::endl;
+    hwlib::cout << "Odd Unit test: "            << rslt_odd[1]                  << " out of " << rslt_odd[1] + rslt_odd[0]                                  << " completed successfully" << hwlib::endl;
+    hwlib::cout << "Even Unit test: "           << rslt_even[1]                 << " out of " << rslt_even[1] + rslt_even[0]                                << " completed successfully" << hwlib::endl;
+    hwlib::cout << "Expression Unit test: "     << rslt_expression[1]           << " out of " << rslt_expression[1] + rslt_expression[0]                    << " completed successfully" << hwlib::endl;
+    hwlib::cout << "Fib Unit test: "            << rslt_fib[1]                  << " out of " << rslt_fib[1] + rslt_fib[0]                                  << " completed successfully" << hwlib::endl;
 
     return 0;
 }
