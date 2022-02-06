@@ -215,7 +215,7 @@ class Compiler():
             
             scope = c_vars(rslt_d,scope,n,n_p,n_e,0) # updating scope for the variables
             scope = c_expression(scope,n,n_p+n_d,0) # updating scope for the expression stores/loads when an operator has an operator for both children
-            assembly = assembly + ["    .global " + asts[0].procedure_name,asts[0].procedure_name + ":"] + rslt # prepend the procedure name and generating a .global to make it callable
+            assembly = assembly + ["\n.global " + asts[0].procedure_name,asts[0].procedure_name + ":"] + rslt # prepend the procedure name and generating a .global to make it callable
             labels[asts[0].procedure_name] = (n_p, list(map(lambda x: str(x.type), rslt_p[0]))) # currently stores num of parameters labels and sets the label active also needs to store loops and if statements. loops, if statements or functions without parameters will contain 0 as num of parameters
             
             # this generated the closing pop instruction for the function. It also used the scope and pretends to be a variable. 
