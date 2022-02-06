@@ -29,7 +29,9 @@ BMPTK := ../bmptk
 HWLIB := ../hwlib
 CATCH := ../Catch2
 
-
 # include the bmptk makefile.inc
 include ../hwlib/makefile.inc
 
+#overriding recipe clean to add .asm files
+clean:
+	rm -f *.asm *.ld *.bin *.elf *.map *.hex *.o bmptk_calculated_size_stack.c bmptk_calculated_size_stack.o bmptk_fixed_size_stack.c bmptk_fixed_size_stack.o bmptk_dummy_size_stack.c bmptk_dummy_size_stack.o _cc_flags _cpp_flags _linker_flags _linker_libs
